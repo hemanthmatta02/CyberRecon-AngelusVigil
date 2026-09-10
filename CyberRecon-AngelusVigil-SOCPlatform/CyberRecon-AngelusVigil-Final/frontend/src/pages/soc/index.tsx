@@ -18,7 +18,7 @@ export function Component(): React.ReactElement {
   async function load(): Promise<void> { setOperations((await apiClient.get<Operation[]>('/platform/incidents')).data) }
   useEffect(() => { void load() }, [])
 
-  async function update(id: string, payload: Record<string, string>): Promise<void> {
+  async function update(id: string, payload: Record<string, string | null>): Promise<void> {
     await apiClient.patch(`/platform/incidents/${id}`, payload)
     await Promise.all([load(), refetch()])
   }
