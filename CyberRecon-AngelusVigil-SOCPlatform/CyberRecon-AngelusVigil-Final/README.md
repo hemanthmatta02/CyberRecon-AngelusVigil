@@ -74,7 +74,7 @@ Example request:
 
 For a hosted deployment, use a managed application platform instead of running the local Compose lab. The recommended layout is a Railway backend service with managed PostgreSQL and Redis, plus the React frontend on Vercel or as a separate static service. This keeps the database, Redis, HTTP API, and WebSocket endpoint available without requiring Docker Desktop on the deployment machine.
 
-Configure the backend service with the repository root set to `CyberRecon-AngelusVigil-SOCPlatform/CyberRecon-AngelusVigil-Final`. The checked-in `railway.toml` points to the production FastAPI build and `/ready` readiness probe. Set these production variables in the platform secret manager:
+Configure the backend service root directory as `/CyberRecon-AngelusVigil-SOCPlatform/CyberRecon-AngelusVigil-Final/backend` so Railway detects `pyproject.toml`. Set the Railway config file explicitly to `/CyberRecon-AngelusVigil-SOCPlatform/CyberRecon-AngelusVigil-Final/railway.toml`; the file uses Railpack (not a user-managed Dockerfile), starts `python -m app`, and uses `/ready` as the readiness probe. Set these production variables in the platform secret manager:
 
 - `ENV=production`
 - `AUTH_SECRET` — a random value of at least 32 characters
