@@ -224,11 +224,16 @@ async def simulation_history(session: AsyncSession=Depends(get_session))->list[d
 @router.post("/simulation/run")
 async def run_simulation(payload: SimulationRequest, request: Request)->dict[str,object]:
     current_user_from_request(request)
-    paths=SIM_PATHS["normal"]+SIM_PATHS["sqli"]+SIM_PATHS["xss"]+SIM_PATHS["scanner"] if payload.mode=="mixed" else SIM_PATHS[payload.mode]
-    started=time.perf_counter(); statuses=Counter(); source_ips: list[str] = []
+    paths=[path for scenario in SIM_PATHS.values() for path in scenario] if payload.mode=="mixed" else SIM_PATHS[payload.mode]
+    started=time.perf_counter(); statuses=Counter(); source_ips: list[str] = []; used_ips: set[str] = set()
     async with httpx.AsyncClient(timeout=5,follow_redirects=False) as client:
         for i in range(payload.count):
-            source_ip=f"10.20.{secrets.randbelow(250) + 1}.{secrets.randbelow(250) + 1}"; source_ips.append(source_ip)
+            while True:
+                source_ip=f"10.20.{secrets.randbelow(250) + 1}.{secrets.randbelow(250) + 1}"
+                if source_ip not in used_ips:
+                    used_ips.add(source_ip)
+                    source_ips.append(source_ip)
+                    break
             headers={"X-Simulated-Source-IP": source_ip, "X-CyberSentinel-Profile": payload.mode, "User-Agent": "CyberSentinel-Simulation/1.0" if payload.mode != "scanner" else "Nmap Scripting Engine"}
             try: statuses[str((await client.get(f"{SIM_TARGET}{paths[i%len(paths)]}", headers=headers)).status_code)]+=1
             except httpx.HTTPError: statuses["ERROR"]+=1
