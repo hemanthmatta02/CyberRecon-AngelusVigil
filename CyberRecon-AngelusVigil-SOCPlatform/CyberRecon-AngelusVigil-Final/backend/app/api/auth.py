@@ -1,3 +1,9 @@
+async def register(payload: RegistrationRequest, session: AsyncSession = Depends(get_session)) -> dict[str, str]:
+    await seed_users(session)    defaults = {
+        "admin": os.getenv("DEFAULT_ADMIN_PASSWORD", "Admin@123"),
+        "analyst": os.getenv("DEFAULT_ANALYST_PASSWORD", "Analyst@123"),
+        "viewer": os.getenv("DEFAULT_VIEWER_PASSWORD", "Viewer@123"),
+    }
 """Authentication, registration, recovery and RBAC helpers."""
 from __future__ import annotations
 
@@ -15,10 +21,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from app.api.deps import get_session
+from app.config import settings
 from app.models.user import User
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
-SECRET = os.getenv("AUTH_SECRET", "cybersentinel-local-demo-secret-change-me")
+SECRET = settings.auth_secret or "cybersentinel-local-demo-secret-change-me"
 ROLES = {
     "admin": ["read", "scan", "manage_alerts", "manage_incidents", "manage_team", "reports"],
     "analyst": ["read", "scan", "manage_alerts", "manage_incidents", "reports"],
