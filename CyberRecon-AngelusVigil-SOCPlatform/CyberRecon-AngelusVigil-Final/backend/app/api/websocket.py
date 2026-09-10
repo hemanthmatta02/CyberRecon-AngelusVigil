@@ -24,6 +24,9 @@ import logging
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from app.api.auth import verify_token
+from app.config import settings
+
 from app.core.alerts import ALERTS_CHANNEL
 from app.core.redis_manager import redis_manager
 
@@ -41,6 +44,17 @@ async def ws_alerts(websocket: WebSocket) -> None:
     Each client gets its own Redis subscriber so this works correctly
     across multiple FastAPI workers.
     """
+    if settings.env.lower() == "production" and not settings.allow_demo_auth:
+        token = websocket.query_params.get("token") or websocket.headers.get("authorization", "").removeprefix("Bearer ").strip()
+        if not token:
+            await websocket.close(code=1008, reason="Authentication required")
+            return
+        try:
+            verify_token(token)
+        except Exception:
+            await websocket.close(code=1008, reason="Invalid or expired token")
+            return
+
     await websocket.accept()
 
     redis = redis_manager.client
