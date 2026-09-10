@@ -1,8 +1,9 @@
 [build]
-builder = "DOCKERFILE"
-dockerfilePath = "infra/docker/fastapi.prod"
+builder = "RAILPACK"
+buildCommand = "pip install ."
 
 [deploy]
+startCommand = "python -m app"
 healthcheckPath = "/ready"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
