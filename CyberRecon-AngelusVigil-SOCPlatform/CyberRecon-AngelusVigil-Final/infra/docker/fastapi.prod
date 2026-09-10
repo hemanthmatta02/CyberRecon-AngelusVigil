@@ -4,7 +4,7 @@
 # Multi-stage production Dockerfile for the FastAPI backend
 #
 # Builder stage: python:3.14-slim with uv, compiles
-# requirements from pyproject.toml with ml extras and
+# requirements from pyproject.toml with core dependencies and
 # installs to /app/deps. Runtime stage: python:3.14-slim
 # with libpq5 and curl, copies the dependency tree to a
 # non-root appuser site-packages path, copies backend source
