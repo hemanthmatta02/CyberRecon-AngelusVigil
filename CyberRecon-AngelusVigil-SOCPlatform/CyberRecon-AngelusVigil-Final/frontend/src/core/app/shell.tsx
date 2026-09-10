@@ -56,7 +56,7 @@ export function Shell(): React.ReactElement {
       </aside>
       {sidebarOpen && <button type="button" className={styles.overlay} onClick={toggleSidebar} aria-label="Close sidebar" />}
       <div className={`${styles.main} ${sidebarCollapsed ? styles.collapsed : ''}`}>
-        <header className={styles.header}><div className={styles.headerLeft}><button type="button" className={styles.menuBtn} onClick={toggleSidebar} aria-label="Toggle menu"><LuMenu /></button><h1 className={styles.pageTitle}>{getPageTitle(location.pathname)}</h1></div><div style={{display:'flex',gap:10,alignItems:'center'}}><span className={styles.livePill}><span /> LIVE</span><span className={styles.livePill}>PUBLIC ACCESS</span></div></header>
+        <header className={styles.header}><div className={styles.headerLeft}><button type="button" className={styles.menuBtn} onClick={toggleSidebar} aria-label="Toggle menu"><LuMenu /></button><h1 className={styles.pageTitle}>{getPageTitle(location.pathname)}</h1></div></header>
         <main className={styles.content}><ErrorBoundary FallbackComponent={ShellErrorFallback}><Suspense fallback={<ShellLoading />}><Outlet /></Suspense></ErrorBoundary></main>
       </div>
     </div>
