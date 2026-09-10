@@ -108,12 +108,18 @@ async def seed_users(session: AsyncSession) -> None:
     if existing:
         return
     defaults = {
-        "admin": os.getenv("DEFAULT_ADMIN_PASSWORD", "Admin@123"),
-        "analyst": os.getenv("DEFAULT_ANALYST_PASSWORD", "Analyst@123"),
-        "viewer": os.getenv("DEFAULT_VIEWER_PASSWORD", "Viewer@123"),
+        "admin": os.getenv("DEFAULT_ADMIN_PASSWORD", ""),
+        "analyst": os.getenv("DEFAULT_ANALYST_PASSWORD", ""),
+        "viewer": os.getenv("DEFAULT_VIEWER_PASSWORD", ""),
     }
     if settings.env.lower() == "production" and any(not password for password in defaults.values()):
         raise RuntimeError("DEFAULT_*_PASSWORD values must be configured before first production startup")
+    if settings.env.lower() != "production":
+        defaults = {
+            "admin": defaults["admin"] or "Admin@123",
+            "analyst": defaults["analyst"] or "Analyst@123",
+            "viewer": defaults["viewer"] or "Viewer@123",
+        }
     for username, role, display in [
         ("admin", "admin", "SOC Administrator"),
         ("analyst", "analyst", "SOC Analyst"),
