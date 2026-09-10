@@ -7,9 +7,9 @@ Redis pub/sub, and structured logging
 
 AlertDispatcher.dispatch receives a ScoredRequest from the
 pipeline, classifies severity via classify_severity, logs
-every event, and for MEDIUM+ severity persists to
-PostgreSQL via create_threat_event and publishes a
-WebSocketAlert JSON payload to the ALERTS_CHANNEL for
+every event, persists every observed request to PostgreSQL
+as a linked threat event and SOC incident, and publishes
+MEDIUM+ WebSocketAlert payloads to the ALERTS_CHANNEL for
 real-time WebSocket relay
 
 Connects to:
@@ -46,8 +46,9 @@ class AlertDispatcher:
     Routes scored threat events to storage, pub/sub,
     and structured logging
 
-    MEDIUM+ severity events are persisted to PostgreSQL
-    and published to the Redis alerts channel for
+    Every scored event is persisted to PostgreSQL and
+    linked to a new operational incident. MEDIUM+ events
+    are also published to the Redis alerts channel for
     WebSocket relay. All events are logged to stdout.
     """
 
