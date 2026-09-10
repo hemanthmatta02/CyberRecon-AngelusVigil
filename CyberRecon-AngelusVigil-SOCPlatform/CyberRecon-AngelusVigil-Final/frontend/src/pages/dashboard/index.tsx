@@ -2,7 +2,6 @@ import { usePlatform } from '@/api/hooks'
 import { useAlerts } from '@/api/hooks/useAlerts'
 import s from '../shared.module.scss'
 
-type TimelinePoint = { label: string; value: number; time: string }
 type Overview = {
   threats: number
   critical: number
@@ -10,22 +9,14 @@ type Overview = {
   medium: number
   low: number
   open_incidents: number
-  threat_timeline: TimelinePoint[]
   recent_events: Array<{ id: string; time: string; ip: string; method: string; path: string; score: number; severity: string }>
 }
 
-function BarChart({ items }: { items: TimelinePoint[] }): React.ReactElement {
+type ChartPoint = { label: string; value: number; time: string }
+
+function BarChart({ items }: { items: ChartPoint[] }): React.ReactElement {
   const max = Math.max(1, ...items.map((item) => item.value))
-  return (
-    <div className={s.chart} aria-label="Threats per hour">
-      {items.map((item) => (
-        <div key={item.time} className={s.bar} style={{ height: `${Math.max(4, (item.value / max) * 165)}px` }} title={`${item.label}: ${item.value} events`}>
-          <span>{item.value}</span>
-          <label>{item.label}</label>
-        </div>
-      ))}
-    </div>
-  )
+  return <div className={s.chart} aria-label="Threats by severity">{items.map((item) => <div key={item.time} className={s.bar} style={{ height: `${Math.max(4, (item.value / max) * 165)}px` }} title={`${item.label}: ${item.value} events`}><span>{item.value}</span><label>{item.label}</label></div>)}</div>
 }
 
 export function Component(): React.ReactElement {
@@ -36,8 +27,7 @@ export function Component(): React.ReactElement {
 
   if (isLoading) return <div className={s.page} />
 
-  const timeline = (data?.threat_timeline ?? []).slice(-12)
-  const severity = [
+  const severity: ChartPoint[] = [
     { label: 'CRIT', value: data?.critical ?? 0, time: 'critical' },
     { label: 'HIGH', value: data?.high ?? 0, time: 'high' },
     { label: 'MED', value: data?.medium ?? 0, time: 'medium' },
@@ -46,7 +36,7 @@ export function Component(): React.ReactElement {
 
   return <div className={s.page}>
     <div className={s.hero}>
-      <div><h2 className={s.title}>CyberSentinel SOC Dashboard</h2><p className={s.sub}>Live security posture across requests, operations, assets and findings.</p></div>
+      <div><h2 className={s.title}>CyberSentinel SOC Dashboard</h2></div>
       <span className={s.notice}>{isConnected ? '● Live telemetry connected' : '○ Reconnecting telemetry'}</span>
     </div>
     <div className={s.kpis}>
@@ -56,10 +46,7 @@ export function Component(): React.ReactElement {
       <div className={s.kpi}><small>Source IPs</small><strong>{detection?.top_sources?.length ?? 0}</strong></div>
       <div className={s.kpi}><small>Alerts in session</small><strong>{alerts.length}</strong></div>
     </div>
-    <div className={s.grid}>
-      <section className={s.card}><h3>Threats over time</h3><p className={s.muted}>Hourly event count for the last 12 hours.</p><BarChart items={timeline} /></section>
-      <section className={s.card}><h3>Threats by severity</h3><BarChart items={severity} /></section>
-    </div>
+    <section className={s.card}><h3>Threats by severity</h3><BarChart items={severity} /></section>
     <div className={s.grid}>
       <section className={s.card}><h3>Top source IPs</h3><table className={s.table}><thead><tr><th>IP</th><th>Events</th></tr></thead><tbody>{(detection?.top_sources ?? []).map((item) => <tr key={item.ip}><td>{item.ip}</td><td>{item.count}</td></tr>)}</tbody></table></section>
       <section className={s.card}><h3>Operation status</h3><table className={s.table}><thead><tr><th>Status</th><th>Count</th></tr></thead><tbody>{Object.entries(soc?.status ?? {}).map(([status, count]) => <tr key={status}><td>{status}</td><td>{count}</td></tr>)}</tbody></table></section>
