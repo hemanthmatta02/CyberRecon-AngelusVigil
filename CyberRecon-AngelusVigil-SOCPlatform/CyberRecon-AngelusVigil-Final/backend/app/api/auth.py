@@ -1,9 +1,3 @@
-async def register(payload: RegistrationRequest, session: AsyncSession = Depends(get_session)) -> dict[str, str]:
-    await seed_users(session)    defaults = {
-        "admin": os.getenv("DEFAULT_ADMIN_PASSWORD", "Admin@123"),
-        "analyst": os.getenv("DEFAULT_ANALYST_PASSWORD", "Analyst@123"),
-        "viewer": os.getenv("DEFAULT_VIEWER_PASSWORD", "Viewer@123"),
-    }
 """Authentication, registration, recovery and RBAC helpers."""
 from __future__ import annotations
 
@@ -95,21 +89,18 @@ def verify_token(token: str) -> dict[str, object]:
 
 
 def current_user_from_request(request: Request) -> dict[str, object]:
-    # CyberSentinel demo mode: authentication is disabled for this local project.
-    # Keep a full-privilege demo analyst identity so scan and management APIs work
-    # without requiring a login page or bearer token.
+    """Resolve a bearer token, with demo auth allowed only in development."""
     header = request.headers.get("authorization", "")
     if header.lower().startswith("bearer "):
-        try:
-            return verify_token(header[7:].strip())
-        except HTTPException:
-            pass
-    return {
-        "sub": "demo-admin",
-        "role": "admin",
-        "display_name": "Demo Administrator",
-        "permissions": ROLES["admin"],
-    }
+        return verify_token(header[7:].strip())
+    if settings.allow_demo_auth and settings.env.lower() != "production":
+        return {
+            "sub": "demo-admin",
+            "role": "admin",
+            "display_name": "Demo Administrator",
+            "permissions": ROLES["admin"],
+        }
+    raise HTTPException(status_code=401, detail="Authentication required")
 
 
 async def seed_users(session: AsyncSession) -> None:
@@ -121,6 +112,8 @@ async def seed_users(session: AsyncSession) -> None:
         "analyst": os.getenv("DEFAULT_ANALYST_PASSWORD", "Analyst@123"),
         "viewer": os.getenv("DEFAULT_VIEWER_PASSWORD", "Viewer@123"),
     }
+    if settings.env.lower() == "production" and any(not password for password in defaults.values()):
+        raise RuntimeError("DEFAULT_*_PASSWORD values must be configured before first production startup")
     for username, role, display in [
         ("admin", "admin", "SOC Administrator"),
         ("analyst", "analyst", "SOC Analyst"),
@@ -142,6 +135,8 @@ async def login(payload: LoginRequest, session: AsyncSession = Depends(get_sessi
 
 @router.post("/register", status_code=201)
 async def register(payload: RegistrationRequest, session: AsyncSession = Depends(get_session)) -> dict[str, str]:
+    if not settings.allow_public_registration:
+        raise HTTPException(status_code=403, detail="Public registration is disabled")
     await seed_users(session)
     if (await session.execute(select(User).where(User.username == payload.username))).scalar_one_or_none():
         raise HTTPException(status_code=409, detail="Username already exists")
