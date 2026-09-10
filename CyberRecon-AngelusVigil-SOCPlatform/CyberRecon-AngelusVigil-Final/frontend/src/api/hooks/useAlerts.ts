@@ -52,10 +52,25 @@ const useAlertStore = create<AlertState>()((set) => ({
 }))
 
 function getWsUrl(): string {
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  return `${protocol}//${window.location.host}${WS_ENDPOINTS.ALERTS}`
-}
+  const configured = import.meta.env.VITE_WS_URL?.trim()
+  if (configured) {
+    return configured.endsWith(WS_ENDPOINTS.ALERTS)
+      ? configured
+      : configured.replace(/\/$/, "") + WS_ENDPOINTS.ALERTS
+  }
 
+  const apiUrl = import.meta.env.VITE_API_URL?.trim()
+  if (apiUrl) {
+    const url = new URL(apiUrl, window.location.origin)
+    url.protocol = url.protocol === "https:" ? "wss:" : "ws:"
+    url.pathname = WS_ENDPOINTS.ALERTS
+    url.search = ""
+    return url.toString()
+  }
+
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"
+  return protocol + "//" + window.location.host + WS_ENDPOINTS.ALERTS
+}
 export function useAlerts() {
   const wsRef = useRef<WebSocket | null>(null)
   const retryCountRef = useRef(0)
