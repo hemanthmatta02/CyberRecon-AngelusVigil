@@ -49,5 +49,8 @@
     "onlyBuiltDependencies": [
       "@parcel/watcher"
     ]
+  },
+  "engines": {
+    "node": ">=24"
   }
 }
