@@ -53,14 +53,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """
     Manage application startup and shutdown lifecycle.
     """
-    @app.middleware("http")
-    async def enforce_api_auth(request, call_next):
-        public_paths = {"/health", "/ready", "/auth/login", "/auth/register", "/auth/forgot-password", "/docs", "/openapi.json", "/redoc"}
-        if settings.env.lower() == "production" and request.url.path not in public_paths and not request.url.path.startswith("/static/"):
-            from app.api.auth import current_user_from_request
-            current_user_from_request(request)
-        return await call_next(request)
-
     app.state.startup_time = time.monotonic()
     app.state.pipeline_running = False
 
@@ -208,6 +200,19 @@ def create_app() -> FastAPI:
         version="0.1.0",
         lifespan=lifespan,
     )
+
+    @app.middleware("http")
+    async def enforce_api_auth(request, call_next):
+        public_paths = {"/health", "/ready", "/auth/login", "/auth/register", "/auth/forgot-password", "/docs", "/openapi.json", "/redoc"}
+        if (
+            request.method != "OPTIONS"
+            and settings.env.lower() == "production"
+            and request.url.path not in public_paths
+            and not request.url.path.startswith("/static/")
+        ):
+            from app.api.auth import current_user_from_request
+            current_user_from_request(request)
+        return await call_next(request)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origin_list(),
