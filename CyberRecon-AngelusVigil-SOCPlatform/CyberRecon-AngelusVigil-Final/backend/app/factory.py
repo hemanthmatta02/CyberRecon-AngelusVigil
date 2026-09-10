@@ -1,4 +1,10 @@
-"""
+    app = FastAPI(
+        title=settings.app_name,
+        version="0.1.0",
+        lifespan=lifespan,
+    )
+
+    app.state.startup_time"""
 ©AngelaMos | 2026
 factory.py
 
@@ -15,6 +21,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
