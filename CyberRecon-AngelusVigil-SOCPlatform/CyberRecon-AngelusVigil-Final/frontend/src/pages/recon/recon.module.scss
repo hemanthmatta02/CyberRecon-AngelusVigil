@@ -1,0 +1,354 @@
+@use '@/styles' as *;
+
+.page {
+  padding: $space-6;
+  display: flex;
+  flex-direction: column;
+  gap: $space-5;
+}
+
+.hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: $space-6;
+}
+
+.kicker {
+  display: flex;
+  gap: $space-2;
+  align-items: center;
+  color: $accent;
+  font-size: $font-size-xs;
+  text-transform: uppercase;
+  letter-spacing: $tracking-wider;
+}
+
+.heading {
+  margin: $space-2 0 $space-2;
+  font-size: $font-size-3xl;
+  color: $text-default;
+}
+
+.description {
+  max-width: 720px;
+  margin: 0;
+  color: $text-lighter;
+  line-height: $line-height-relaxed;
+  font-size: $font-size-sm;
+}
+
+.notice {
+  max-width: 360px;
+  display: flex;
+  gap: $space-2;
+  padding: $space-3 $space-4;
+  border: 1px solid $severity-medium;
+  background: $severity-medium-bg;
+  color: $severity-medium;
+  border-radius: $radius-md;
+  font-size: $font-size-xs;
+  line-height: $line-height-snug;
+}
+
+.card {
+  padding: $space-5;
+  background: $bg-surface-100;
+  border: 1px solid $border-muted;
+  border-radius: $radius-lg;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: minmax(300px, 1fr) 1.5fr;
+  gap: $space-5;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+  color: $text-lighter;
+  font-size: $font-size-xs;
+
+  input {
+    width: 100%;
+    padding: $space-3 $space-3;
+    background: $bg-control;
+    color: $text-default;
+    border: 1px solid $border-default;
+    border-radius: $radius-md;
+    outline: none;
+
+    &:focus {
+      border-color: $accent;
+    }
+  }
+}
+
+.options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: $space-2;
+  align-content: end;
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-3;
+  background: $bg-control;
+  border: 1px solid $border-default;
+  border-radius: $radius-md;
+  color: $text-light;
+  font-size: $font-size-sm;
+}
+
+.portSelector {
+  margin-top: $space-5;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: $space-4;
+  margin-bottom: $space-3;
+  color: $text-light;
+  font-size: $font-size-xs;
+  text-transform: uppercase;
+  letter-spacing: $tracking-wider;
+}
+
+.portGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-2;
+}
+
+.portButton {
+  min-width: 62px;
+  padding: $space-2;
+  background: $bg-control;
+  color: $text-lighter;
+  border: 1px solid $border-default;
+  border-radius: $radius-md;
+  cursor: pointer;
+
+  &:hover {
+    color: $text-default;
+    background: $bg-surface-200;
+  }
+}
+
+.selected {
+  border-color: $accent;
+  color: $text-default;
+  background: $accent-muted;
+}
+
+.actions {
+  margin-top: $space-5;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.scanButton {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-3 $space-5;
+  background: $accent;
+  color: $white;
+  border: none;
+  border-radius: $radius-md;
+  font-weight: $font-weight-medium;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.65;
+    cursor: wait;
+  }
+}
+
+.spin {
+  animation: spin 0.9s linear infinite;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: $space-4;
+}
+
+.metric {
+  display: flex;
+  gap: $space-3;
+  align-items: center;
+  padding: $space-4 $space-5;
+  background: $bg-surface-100;
+  border: 1px solid $border-muted;
+  border-radius: $radius-lg;
+}
+
+.metricIcon {
+  width: 22px;
+  height: 22px;
+  color: $accent;
+}
+
+.metricValue,
+.metricLabel {
+  display: block;
+}
+
+.metricValue {
+  color: $text-default;
+  font-size: $font-size-xl;
+  font-weight: $font-weight-semibold;
+}
+
+.metricLabel {
+  color: $text-muted;
+  font-size: $font-size-xs;
+}
+
+.resultGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: $space-5;
+}
+
+.dnsList,
+.addressList,
+.table,
+.history {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+}
+
+.dnsRow,
+.addressRow,
+.tableRow,
+.httpRow,
+.historyRow {
+  display: flex;
+  justify-content: space-between;
+  gap: $space-4;
+  padding: $space-3 0;
+  border-top: 1px solid $border-muted;
+  font-size: $font-size-xs;
+}
+
+.recordType {
+  width: 54px;
+  color: $accent;
+  font-weight: $font-weight-semibold;
+}
+
+.recordValues {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-2;
+}
+
+code {
+  color: $text-light;
+  font-family: monospace;
+  word-break: break-all;
+}
+
+.muted {
+  color: $text-muted;
+  font-size: $font-size-xs;
+}
+
+.httpRow {
+  align-items: center;
+
+  > div:first-child {
+    display: flex;
+    flex-direction: column;
+    gap: $space-1;
+  }
+}
+
+.httpMeta {
+  display: flex;
+  gap: $space-3;
+  align-items: center;
+  text-align: right;
+
+  strong {
+    color: $text-default;
+  }
+
+  span {
+    color: $text-muted;
+  }
+}
+
+.historyRow {
+  width: 100%;
+  border: 0;
+  border-top: 1px solid $border-muted;
+  background: transparent;
+  color: inherit;
+  padding: $space-3 0;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    background: $bg-surface-200;
+  }
+
+  > span:first-child {
+    display: flex;
+    flex-direction: column;
+    gap: $space-1;
+  }
+
+  small {
+    color: $text-muted;
+  }
+
+  > span:last-child {
+    color: $text-lighter;
+  }
+}
+
+@media (max-width: 1024px) {
+  .hero,
+  .formGrid,
+  .resultGrid {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .options,
+  .metrics {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .page {
+    padding: $space-4;
+  }
+
+  .metrics,
+  .options {
+    grid-template-columns: 1fr;
+  }
+
+  .hero {
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
