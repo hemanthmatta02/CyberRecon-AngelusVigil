@@ -32,6 +32,7 @@ LAB_REQUEST_PROFILES = (
     ("xss", "GET", "/api/search?q=%3Cscript%3Ealert(1)%3C%2Fscript%3E", "CyberSentinel-Lab/1.0"),
     ("command-injection", "GET", "/api/search?q=%3Bid", "CyberSentinel-Lab/1.0"),
 )
+LAST_RANDOM_PROFILE: str | None = None
 
 class ManualRequest(BaseModel):
     target_url: str = Field(default=DEFAULT_TARGET, min_length=1, max_length=1000)
@@ -71,7 +72,11 @@ def _lab_ip() -> str:
 
 
 def _random_profile() -> tuple[str, str, str, str]:
-    return LAB_REQUEST_PROFILES[secrets.randbelow(len(LAB_REQUEST_PROFILES))]
+    global LAST_RANDOM_PROFILE
+    choices = tuple(profile for profile in LAB_REQUEST_PROFILES if profile[0] != LAST_RANDOM_PROFILE) or LAB_REQUEST_PROFILES
+    selected = choices[secrets.randbelow(len(choices))]
+    LAST_RANDOM_PROFILE = selected[0]
+    return selected
 
 
 @router.get("/history")
