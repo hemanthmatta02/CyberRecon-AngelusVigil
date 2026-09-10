@@ -69,6 +69,22 @@ Example request:
 }
 ```
 
+
+## Managed deployment
+
+For a hosted deployment, use a managed application platform instead of running the local Compose lab. The recommended layout is a Railway backend service with managed PostgreSQL and Redis, plus the React frontend on Vercel or as a separate static service. This keeps the database, Redis, HTTP API, and WebSocket endpoint available without requiring Docker Desktop on the deployment machine.
+
+Configure the backend service with the repository root set to `CyberRecon-AngelusVigil-SOCPlatform/CyberRecon-AngelusVigil-Final`. The checked-in `railway.toml` points to the production FastAPI build and `/ready` readiness probe. Set these production variables in the platform secret manager:
+
+- `ENV=production`
+- `AUTH_SECRET` — a random value of at least 32 characters
+- `ALLOW_DEMO_AUTH=false`
+- `ALLOW_PUBLIC_REGISTRATION=false`
+- `CORS_ORIGINS` — the exact public frontend origin
+- `DATABASE_URL` and `REDIS_URL` — supplied by the managed services
+- `DEFAULT_ADMIN_PASSWORD`, `DEFAULT_ANALYST_PASSWORD`, and `DEFAULT_VIEWER_PASSWORD` — one-time bootstrap credentials
+
+For a separate frontend service, set its root directory to `CyberRecon-AngelusVigil-SOCPlatform/CyberRecon-AngelusVigil-Final/frontend`, build with `npm run build`, publish `dist`, and configure `VITE_API_URL` to the HTTPS backend URL and `VITE_WS_URL` to the WSS endpoint ending in `/ws/alerts`. After the first admin login, rotate the bootstrap passwords and keep all production secrets out of Git.
 ## MaxMind GeoIP
 
 GeoIP is optional in this local build. The backend gracefully disables GeoIP lookups when the `.mmdb` database is absent, so no MaxMind account is needed to run the core application or CyberRecon module.
