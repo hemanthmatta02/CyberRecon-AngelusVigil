@@ -49,6 +49,9 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       API_KEY: ${API_KEY:-}
       AUTH_SECRET: ${AUTH_SECRET:-change-this-demo-secret}
+      ALLOW_DEMO_AUTH: ${ALLOW_DEMO_AUTH:-true}
+      ALLOW_PUBLIC_REGISTRATION: ${ALLOW_PUBLIC_REGISTRATION:-true}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:46969}
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-vigil}:${POSTGRES_PASSWORD:-devpassword}@postgres:5432/${POSTGRES_DB:-cybersentinel}
       REDIS_URL: redis://redis:6379
       NGINX_LOG_PATH: /var/log/nginx/access.log
