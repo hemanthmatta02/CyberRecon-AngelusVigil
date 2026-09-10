@@ -31,7 +31,7 @@ export function Component(): React.ReactElement {
     navigate('/incidents')
   }
   async function resolve(item: Threat): Promise<void> { await apiClient.patch(`/security/alerts/${item.id}`, { resolved: true }); await load() }
-  const visible = rows.filter((item) => (showAssigned || !item.incident_id) && (showResolved || !item.resolved))
+  const visible = rows.filter((item) => showResolved || !item.resolved)
 
   return <div className={s.page}>
     <div className={s.hero}><div><h2 className={s.title}>Threat Events</h2><p className={s.sub}>Searchable audit stream with classification filters and a traceable route into Incident Response.</p></div><button className={s.button} onClick={() => void load()}>Refresh</button></div>
