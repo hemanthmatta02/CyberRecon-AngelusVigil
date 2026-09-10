@@ -1,7 +1,4 @@
-        "models_loaded": getattr(request.app.state, "models_loaded", False),
-    }
-
-    all_ok = database_ok and redis_ok"""
+"""
 ©AngelaMos | 2026
 health.py
 
@@ -60,9 +57,10 @@ async def ready(request: Request, response: Response) -> dict[str, object]:
         "database": "ok" if database_ok else "error",
         "redis": "ok" if redis_ok else "error",
         "models_loaded": getattr(request.app.state, "models_loaded", False),
+        "pipeline_running": getattr(request.app.state, "pipeline_running", False),
     }
 
-    all_ok = database_ok and redis_ok
+    all_ok = database_ok and redis_ok and bool(checks["pipeline_running"])
 
     if not all_ok:
         response.status_code = 503
