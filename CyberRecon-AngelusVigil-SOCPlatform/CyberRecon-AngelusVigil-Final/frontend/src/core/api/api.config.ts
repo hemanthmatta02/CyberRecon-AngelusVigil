@@ -24,6 +24,14 @@ export const apiClient: AxiosInstance = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
+apiClient.interceptors.request.use((config) => {
+  const token = typeof window !== "undefined" ? window.sessionStorage.getItem("cybersentinel_token") : null
+  if (token) {
+    config.headers.Authorization = "Bearer " + token
+  }
+  return config
+})
+
 apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError): Promise<never> => {
