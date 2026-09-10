@@ -51,6 +51,13 @@ const useAlertStore = create<AlertState>()((set) => ({
   clear: () => set({ alerts: [], isConnected: false, connectionError: null }),
 }))
 
+function withWsToken(url: string): string {
+  const token = typeof window !== "undefined" ? window.sessionStorage.getItem("cybersentinel_token") : null
+  if (!token) return url
+  const parsed = new URL(url, window.location.origin)
+  parsed.searchParams.set("token", token)
+  return parsed.toString()
+}
 function getWsUrl(): string {
   const configured = import.meta.env.VITE_WS_URL?.trim()
   if (configured) {
@@ -81,7 +88,7 @@ export function useAlerts() {
 
   useEffect(() => {
     function connect() {
-      const ws = new WebSocket(getWsUrl())
+      const ws = new WebSocket(withWsToken(getWsUrl()))
       wsRef.current = ws
 
       ws.onopen = () => {
