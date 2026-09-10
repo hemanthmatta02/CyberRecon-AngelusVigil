@@ -28,7 +28,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 COPY backend/pyproject.toml ./
-RUN uv pip compile pyproject.toml --extra ml -o requirements.txt && \
+RUN uv pip compile pyproject.toml -o requirements.txt && \
     uv pip install --target /app/deps -r requirements.txt
 
 FROM python:3.14-slim
@@ -60,4 +60,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=180s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
 ENTRYPOINT ["/app/entrypoint.sh"]
-CMD ["uvicorn", "app.factory:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "-m", "app"]
