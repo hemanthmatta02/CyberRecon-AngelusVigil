@@ -15,7 +15,7 @@ export function Component(): React.ReactElement {
 
   async function load(): Promise<void> { setLoading(true); try { setRows((await apiClient.get<Incident[]>('/platform/incidents', { params: status === 'ALL' ? undefined : { status } })).data) } finally { setLoading(false) } }
   useEffect(() => { void load() }, [status])
-  async function save(id: string, payload: Record<string, string>): Promise<void> { await apiClient.patch(`/platform/incidents/${id}`, payload); await load() }
+  async function save(id: string, payload: Record<string, string | null>): Promise<void> { await apiClient.patch(`/platform/incidents/${id}`, payload); await load() }
 
   return <div className={s.page}>
     <div className={s.hero}><div><h2 className={s.title}>Incident Response</h2><p className={s.sub}>The same operational records shown in SOC Operations, with evidence, ownership and response actions.</p></div><button className={s.button} onClick={() => void load()}>Refresh</button></div>
