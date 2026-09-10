@@ -27,7 +27,7 @@ Connects to:
 
 from typing import Self
 
-from pydantic import model_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -48,9 +48,12 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
     api_key: str = ""
+    auth_secret: str = ""
+    allow_demo_auth: bool = False
+    allow_public_registration: bool = True
+    cors_origins: str = ""
     log_level: str = "INFO"
 
-    database_url: str = "postgresql+asyncpg://vigil:changeme@localhost:5432/cybersentinel"
 
     redis_url: str = "redis://localhost:6379"
 
@@ -74,7 +77,6 @@ class Settings(BaseSettings):
     ae_threshold_percentile: float = 99.5
     mlflow_tracking_uri: str = "file:./mlruns"
 
-    @model_validator(mode="after")
     def _check_ensemble_weights(self) -> Self:
         """
         Validate that ensemble weights sum to 1.0
