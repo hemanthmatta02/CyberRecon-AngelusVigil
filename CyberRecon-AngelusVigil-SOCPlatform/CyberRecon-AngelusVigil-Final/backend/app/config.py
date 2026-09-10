@@ -54,6 +54,18 @@ class Settings(BaseSettings):
     cors_origins: str = ""
     log_level: str = "INFO"
 
+    database_url: str = "postgresql+asyncpg://vigil:changeme@localhost:5432/cybersentinel"
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def _normalize_database_url(cls, value: object) -> str:
+        """Normalize provider URLs to the async SQLAlchemy driver."""
+        url = str(value)
+        if url.startswith("postgres://"):
+            return "postgresql+asyncpg://" + url[len("postgres://"):]
+        if url.startswith("postgresql://"):
+            return "postgresql+asyncpg://" + url[len("postgresql://"):]
+        return url
 
     redis_url: str = "redis://localhost:6379"
 
@@ -77,6 +89,24 @@ class Settings(BaseSettings):
     ae_threshold_percentile: float = 99.5
     mlflow_tracking_uri: str = "file:./mlruns"
 
+    def cors_origin_list(self) -> list[str]:
+        """Return configured browser origins as a normalized list."""
+        return [origin.strip().rstrip("/") for origin in self.cors_origins.split(",") if origin.strip()]
+
+    def validate_runtime(self) -> None:
+        """Reject unsafe production defaults before the app starts."""
+        if self.env.lower() != "production":
+            return
+        if len(self.auth_secret) < 32:
+            raise ValueError("AUTH_SECRET must be at least 32 characters in production")
+        if self.allow_demo_auth:
+            raise ValueError("ALLOW_DEMO_AUTH must be false in production")
+        if self.allow_public_registration:
+            raise ValueError("ALLOW_PUBLIC_REGISTRATION must be false in production")
+        if not self.cors_origin_list():
+            raise ValueError("CORS_ORIGINS must be configured in production")
+
+    @model_validator(mode="after")
     def _check_ensemble_weights(self) -> Self:
         """
         Validate that ensemble weights sum to 1.0
