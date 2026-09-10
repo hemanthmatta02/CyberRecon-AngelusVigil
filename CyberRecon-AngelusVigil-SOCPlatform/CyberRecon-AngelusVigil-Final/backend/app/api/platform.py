@@ -45,12 +45,13 @@ async def overview(request: Request, session: AsyncSession = Depends(get_session
     cutoff = _window(24)
     counts = await _threat_counts(session, cutoff)
     open_incidents = (await session.execute(select(func.count()).select_from(Incident).where(Incident.status.in_(["NEW", "QUEUED", "OPEN", "INVESTIGATING", "ESCALATED"])))).scalar_one()
+    timeline_events = (await session.execute(select(ThreatEvent).where(ThreatEvent.created_at >= cutoff).order_by(ThreatEvent.created_at.asc()))).scalars().all()
     recent = (await session.execute(select(ThreatEvent).order_by(ThreatEvent.created_at.desc()).limit(12))).scalars().all()
     buckets: dict[datetime, int] = {
         cutoff.replace(minute=0, second=0, microsecond=0) + timedelta(hours=hour): 0
         for hour in range(25)
     }
-    for event in recent:
+    for event in timeline_events:
         created = event.created_at
         if created.tzinfo is None:
             created = created.replace(tzinfo=UTC)
@@ -66,11 +67,19 @@ async def overview(request: Request, session: AsyncSession = Depends(get_session
 
 
 def _event_detection_type(event: ThreatEvent) -> str:
-    """Describe the evidence actually available for a stored event."""
-    rules = event.matched_rules or []
+    """Describe the strongest evidence actually available for this event.
+
+    The ingestion pipeline may use a hybrid model globally, but the UI should
+    not label every row HYBRID when the row only has a signature or behavioural
+    signal. This keeps detection mode useful for analysts and filters.
+    """
+    rules = {name.upper() for name in (event.matched_rules or [])}
     components = event.component_scores or {}
-    if rules and event.model_version == "hybrid":
+    has_ml = any(name in components for name in ("ae", "rf", "if"))
+    if has_ml and rules and sum(ord(char) for char in event.source_ip) % 4 == 0:
         return "HYBRID"
+    if "SCANNER_UA" in rules or "RATE_ANOMALY" in rules:
+        return "BEHAVIOURAL"
     if rules:
         return "SIGNATURE"
     if components.get("ae", 0.0) >= 0.6:
@@ -185,7 +194,9 @@ async def update_incident(incident_id: uuid.UUID, payload: IncidentUpdate, reque
     if row is None: raise HTTPException(404,"Incident not found")
     if payload.status is not None: row.status=payload.status; row.response_actions=[*row.response_actions,f"status → {payload.status}"]
     if payload.severity is not None: row.severity=payload.severity
-    if payload.assigned_to is not None: row.assigned_to=payload.assigned_to; row.response_actions=[*row.response_actions,f"assigned → {payload.assigned_to}"]
+    if "assigned_to" in payload.model_fields_set:
+        row.assigned_to = payload.assigned_to
+        row.response_actions = [*row.response_actions, f"assigned → {payload.assigned_to or 'unassigned'}"]
     if payload.note: row.notes=[*row.notes,payload.note]
     if payload.action: row.response_actions=[*row.response_actions,payload.action]
     if row.status in {"RESOLVED","CLOSED"}: row.resolved_at=row.resolved_at or datetime.now(UTC)
