@@ -3,9 +3,15 @@ import type { RouteObject } from 'react-router-dom'
 import { ROUTES } from '@/config'
 import { Shell } from './shell'
 
+function ProtectedLayout(): React.ReactElement {
+  const token = typeof window !== 'undefined' ? window.sessionStorage.getItem('cybersentinel_token') : null
+  return token ? <Shell /> : <Navigate to={ROUTES.AUTH} replace />
+}
+
 const routes: RouteObject[] = [
+  { path: ROUTES.AUTH, lazy: () => import('@/pages/auth') },
   {
-    element: <Shell />,
+    element: <ProtectedLayout />,
     children: [{ element: <Outlet />, children: [
       { path: ROUTES.DASHBOARD, lazy: () => import('@/pages/dashboard') },
       { path: ROUTES.MANUAL_REQUEST, lazy: () => import('@/pages/manual-request') },
