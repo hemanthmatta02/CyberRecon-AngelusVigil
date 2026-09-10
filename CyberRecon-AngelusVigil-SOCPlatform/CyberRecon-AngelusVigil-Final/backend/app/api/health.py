@@ -1,4 +1,7 @@
-"""
+        "models_loaded": getattr(request.app.state, "models_loaded", False),
+    }
+
+    all_ok = database_ok and redis_ok"""
 ©AngelaMos | 2026
 health.py
 
