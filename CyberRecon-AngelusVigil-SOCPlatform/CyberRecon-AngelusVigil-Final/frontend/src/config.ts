@@ -54,7 +54,7 @@ export const ROUTES = {
   VULNERABILITIES: '/vulnerabilities',
   ALERTS: '/alerts',
   TEAM: '/team',
-  AI: '/ai-copilot',
+  AI: '/ai-workspace',
 } as const
 
 export const STORAGE_KEYS = {
