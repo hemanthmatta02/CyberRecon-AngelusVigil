@@ -1,32 +1,68 @@
-// ===================
-// © AngelaMos | 2026
-// shell.module.scss
-
-// Application shell layout styles with collapsible sidebar
-// and responsive mobile drawer
-
-// Styles a fixed-position sidebar (240px expanded, 64px
-// collapsed) with dot-grid background, NavLink items with
-// hover and active states, red-tinted nav icons, a chevron
-// collapse toggle hidden on mobile, and a slide-in mobile
-// drawer with overlay dismiss. The main content area adjusts
-// margin-left to match sidebar width, contains a sticky
-// header with dot-grid background and mobile hamburger
-// button, and a scrollable content region with radial-dot
-// background pattern. Includes error and loading fallback
-// states. Connects to core/app/shell, styles/_index
-// ===================
-
 @use '@/styles' as *;
 
-$sidebar-width: 240px;
-$sidebar-collapsed-width: 64px;
-$header-height: 56px;
+$sidebar-width: 252px;
+$sidebar-collapsed-width: 68px;
+$header-height: 68px;
+$cyan: #00e5ff;
+$purple: #c43cff;
+$bg: #05070d;
 
 .shell {
   display: flex;
   min-height: 100vh;
   min-height: 100dvh;
+  background: $bg;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.ambient {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 72% 35%, rgb(0, 229, 255, 7%), transparent 34%),
+    radial-gradient(circle at 35% 75%, rgb(196, 60, 255, 6%), transparent 32%),
+    linear-gradient(180deg, #05070d 0%, #070913 55%, #03050a 100%);
+}
+
+.ambient::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgb(0, 229, 255, 4%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(0, 229, 255, 4%) 1px, transparent 1px);
+  background-size: 46px 46px;
+  mask-image: linear-gradient(to bottom, black, transparent 90%);
+}
+
+.rain,
+.rain::before,
+.rain::after {
+  position: absolute;
+  inset: -40%;
+  content: '';
+  background-image: repeating-linear-gradient(105deg, transparent 0 12px, rgb(0, 229, 255, 12%) 13px, transparent 14px 27px);
+  background-size: 31px 31px;
+  transform: rotate(2deg);
+  animation: rainFall 1.35s linear infinite;
+  opacity: 0.34;
+}
+
+.rain::before { animation-duration: 2s; opacity: 0.16; transform: translateX(19px) rotate(2deg); }
+.rain::after { animation-duration: 2.7s; opacity: 0.11; transform: translateX(-23px) rotate(2deg); }
+
+.scanline {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, transparent 0%, rgb(0, 229, 255, 0%) 45%, rgb(0, 229, 255, 4%) 50%, transparent 55%, transparent 100%);
+  background-size: 100% 9px;
+  opacity: 0.22;
+  animation: scan 7s linear infinite;
 }
 
 .sidebar {
@@ -35,326 +71,93 @@ $header-height: 56px;
   left: 0;
   bottom: 0;
   width: $sidebar-width;
-  background:
-    radial-gradient(circle, $border-default 1px, transparent 1px),
-    $bg-surface-100;
-  background-size: 24px 24px, auto;
-  border-right: 1px solid $border-default;
+  background: rgb(5, 7, 13, 91%);
+  backdrop-filter: blur(18px);
+  border-right: 1px solid rgb(0, 229, 255, 18%);
   display: flex;
   flex-direction: column;
   z-index: $z-fixed;
-  @include transition-fast;
-
-  &.collapsed {
-    width: $sidebar-collapsed-width;
-  }
-
+  transition: width 180ms ease, transform 180ms ease;
+  box-shadow: 12px 0 45px rgb(0, 0, 0, 24%);
+  &.collapsed { width: $sidebar-collapsed-width; }
   @include breakpoint-down('sm') {
     transform: translateX(-100%);
-
-    &.open {
-      transform: translateX(0);
-    }
-
-    &.collapsed {
-      width: $sidebar-width;
-    }
+    &.open { transform: translateX(0); }
+    &.collapsed { width: $sidebar-width; }
   }
 }
 
 .sidebarHeader {
   height: $header-height;
-  padding: 0 $space-3;
+  padding: 0 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid $border-default;
-
-  .sidebar.collapsed & {
-    justify-content: center;
-    padding: 0;
-  }
+  border-bottom: 1px solid rgb(0, 229, 255, 12%);
+  .sidebar.collapsed & { justify-content: center; padding: 0; }
 }
 
-.logo {
-  font-size: $font-size-base;
-  font-weight: $font-weight-semibold;
-  color: $text-default;
-  @include transition-fast;
-
-  .sidebar.collapsed & {
-    display: none;
-  }
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.brandMark {
+  width: 30px; height: 30px; display: grid; place-items: center; border: 1px solid rgb(0, 229, 255, 48%);
+  border-radius: 9px; color: $cyan; background: rgb(0, 229, 255, 6%); box-shadow: 0 0 18px rgb(0, 229, 255, 12%);
+  svg { width: 16px; height: 16px; }
 }
-
-.nav {
-  flex: 1;
-  padding: $space-3;
-  display: flex;
-  flex-direction: column;
-  gap: $space-1;
-}
-
-.navItem {
-  display: flex;
-  align-items: center;
-  gap: $space-3;
-  padding: $space-2 $space-3;
-  border-radius: $radius-md;
-  font-size: $font-size-sm;
-  color: $text-light;
-  @include transition-fast;
-
-  @include hover {
-    background: $bg-surface-200;
-    color: $text-default;
-  }
-
-  &.active {
-    background: $bg-selection;
-    color: $text-default;
-  }
-
-  .sidebar.collapsed & {
-    justify-content: center;
-  }
-}
-
-.navIcon {
-  width: 17px;
-  height: 17px;
-  flex-shrink: 0;
-  color: $severity-high;
-  opacity: 0.7;
-
-  .navItem.active & {
-    opacity: 1;
-  }
-}
-
-.navLabel {
-  @include transition-fast;
-
-  .sidebar.collapsed & {
-    display: none;
-  }
-}
-
-.adminItem {
-  margin-top: auto;
-  border-top: 1px solid $border-default;
-  padding-top: $space-3;
-}
+.logo { font-size: 17px; font-weight: 700; letter-spacing: 0.5px; color: #f4f6ff; white-space: nowrap; }
+.logo::first-letter { color: $purple; }
 
 .collapseBtn {
-  width: 45px;
-  height: 45px;
-  border-radius: $radius-md;
-  color: $severity-high;
-  opacity: 0.6;
-  @include flex-center;
-  @include transition-fast;
-
-  svg {
-    width: 23.5px;
-    height: 23.5px;
-  }
-
-  @include hover {
-    background: $bg-surface-200;
-    opacity: 1;
-  }
-
-  @include breakpoint-down('sm') {
-    display: none;
-  }
+  width: 34px; height: 34px; border-radius: 8px; color: #778399; display: grid; place-items: center; transition: all 160ms ease;
+  svg { width: 17px; height: 17px; }
+  &:hover { color: $cyan; background: rgb(0, 229, 255, 7%); }
+  @include breakpoint-down('sm') { display: none; }
 }
 
-.sidebarFooter {
-  padding: $space-3;
-  border-top: 1px solid $border-default;
+.environmentBadge {
+  margin: 14px 14px 7px; padding: 8px 10px; border: 1px solid rgb(0, 229, 255, 12%); border-radius: 8px;
+  display: flex; align-items: center; gap: 7px; color: #65748a; font: 600 9px/1 $font-mono; letter-spacing: 0.8px;
+  svg { color: $cyan; width: 13px; }
+  i { width: 5px; height: 5px; margin-left: auto; border-radius: 50%; background: $cyan; box-shadow: 0 0 9px $cyan; }
+  .sidebar.collapsed & { display: none; }
 }
 
-.logoutBtn {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: $space-3;
-  padding: $space-3;
-  border-radius: $radius-md;
-  font-size: $font-size-sm;
-  color: $text-default;
-  @include transition-fast;
-
-  @include hover {
-    background: $bg-surface-200;
-  }
-
-  .sidebar.collapsed & {
-    justify-content: center;
-
-    .logoutText {
-      display: none;
-    }
-  }
+.nav { flex: 1; padding: 8px 10px 16px; display: flex; flex-direction: column; gap: 3px; overflow-y: auto; scrollbar-width: thin; }
+.navItem {
+  display: flex; align-items: center; gap: 11px; min-height: 39px; padding: 8px 11px; border: 1px solid transparent; border-radius: 8px;
+  color: #8490a5; font-size: 12px; letter-spacing: 0.15px; transition: all 150ms ease;
+  .navIcon { width: 16px; height: 16px; flex: 0 0 auto; color: #637187; transition: color 150ms ease, filter 150ms ease; }
+  &:hover { color: #e9efff; background: rgb(255, 255, 255, 3%); border-color: rgb(0, 229, 255, 9%); .navIcon { color: $cyan; } }
+  &.active { color: #f5f8ff; background: linear-gradient(90deg, rgb(0, 229, 255, 10%), rgb(196, 60, 255, 7%)); border-color: rgb(0, 229, 255, 22%); box-shadow: inset 2px 0 0 $cyan, 0 0 18px rgb(0, 229, 255, 5%); .navIcon { color: $cyan; filter: drop-shadow(0 0 5px rgb(0, 229, 255, 55%)); } }
+  .sidebar.collapsed & { justify-content: center; padding-inline: 0; }
 }
+.navLabel { white-space: nowrap; .sidebar.collapsed & { display: none; } }
 
-.logoutIcon {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-}
+.overlay { position: fixed; inset: 0; background: rgb(0,0,0,62%); z-index: calc($z-fixed - 1); border: none; display: none; @include breakpoint-down('sm') { display: block; } }
 
-.logoutText {
-  font-weight: $font-weight-medium;
-  @include transition-fast;
-}
-
-.overlay {
-  position: fixed;
-  inset: 0;
-  background: rgb(0, 0, 0, 50%);
-  z-index: calc($z-fixed - 1);
-  display: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-
-  @include breakpoint-down('sm') {
-    display: block;
-  }
-}
-
-.main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  margin-left: $sidebar-width;
-  min-width: 0;
-  @include transition-fast;
-
-  &.collapsed {
-    margin-left: $sidebar-collapsed-width;
-  }
-
-  @include breakpoint-down('sm') {
-    margin-left: 0;
-
-    &.collapsed {
-      margin-left: 0;
-    }
-  }
-}
+.main { flex: 1; display: flex; flex-direction: column; margin-left: $sidebar-width; min-width: 0; transition: margin-left 180ms ease; &.collapsed { margin-left: $sidebar-collapsed-width; } @include breakpoint-down('sm') { margin-left: 0; &.collapsed { margin-left: 0; } } }
 
 .header {
-  position: sticky;
-  top: 0;
-  height: $header-height;
-  background:
-    radial-gradient(circle, $border-default 1px, transparent 1px),
-    $bg-surface-100;
-  background-size: 24px 24px, auto;
-  border-bottom: 1px solid $border-default;
-  z-index: $z-sticky;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 $space-4;
+  position: sticky; top: 0; height: $header-height; background: rgb(5,7,13,82%); backdrop-filter: blur(16px); border-bottom: 1px solid rgb(0,229,255,12%); z-index: $z-sticky;
+  display: flex; align-items: center; justify-content: space-between; padding: 0 22px;
 }
+.headerLeft { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.menuBtn { display: none; width: 36px; height: 36px; border-radius: 8px; color: #8490a5; place-items: center; @include breakpoint-down('sm') { display: grid; } }
+.titleBlock { display: flex; flex-direction: column; gap: 3px; }
+.systemLabel { display: flex; align-items: center; gap: 6px; color: #536176; font: 600 8px/1 $font-mono; letter-spacing: 1px; svg { width: 11px; color: $cyan; } }
+.pageTitle { margin: 0; color: #eef2ff; font-size: 15px; font-weight: 600; letter-spacing: 0.2px; }
+.headerRight { display: flex; align-items: center; gap: 14px; }
+.status { display: flex; align-items: center; gap: 7px; color: #6e7d91; font: 600 9px/1 $font-mono; letter-spacing: 0.8px; }
+.status i { width: 6px; height: 6px; border-radius: 50%; background: $cyan; box-shadow: 0 0 9px $cyan; animation: pulse 2s ease-in-out infinite; }
+.avatar { width: 31px; height: 31px; border-radius: 9px; border: 1px solid rgb(196,60,255,25%); background: rgb(196,60,255,6%); color: #d5a6ff; display: grid; place-items: center; font: 700 11px $font-mono; }
 
-.headerLeft {
-  display: flex;
-  align-items: center;
-  gap: $space-3;
-}
+.content { flex: 1; overflow-y: auto; position: relative; background: radial-gradient(circle at 70% 20%, rgb(0,229,255,3%), transparent 35%); }
+.loading { min-height: 100%; display: grid; place-items: center; color: #65748a; }
+.error { min-height: 100%; display: grid; place-items: center; align-content: center; gap: 14px; padding: 24px; color: #ff6b8a; h2 { margin: 0; font-size: 20px; } pre { max-width: min(900px, 92vw); overflow: auto; padding: 16px; border: 1px solid rgb(255,107,138,20%); border-radius: 10px; background: rgb(255,107,138,4%); } }
 
-.menuBtn {
-  display: none;
-  width: 36px;
-  height: 36px;
-  border-radius: $radius-md;
-  color: $text-light;
-  align-items: center;
-  justify-content: center;
-  @include transition-fast;
+@keyframes rainFall { from { background-position: 0 -80px; } to { background-position: 31px 80px; } }
+@keyframes scan { from { background-position: 0 -80px; } to { background-position: 0 80px; } }
+@keyframes pulse { 0%,100% { opacity: .55; transform: scale(.9); } 50% { opacity: 1; transform: scale(1.1); } }
 
-  svg {
-    width: 20px;
-    height: 20px;
-  }
-
-  @include hover {
-    background: $bg-surface-200;
-    color: $text-default;
-  }
-
-  @media (width <= 479px) {
-    display: flex;
-  }
-}
-
-.pageTitle {
-  font-size: $font-size-base;
-  font-weight: $font-weight-medium;
-  color: $text-default;
-  margin-left: 7px;
-}
-
-.headerRight {
-  display: flex;
-  align-items: center;
-  gap: $space-3;
-}
-
-.avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: $radius-full;
-  background: $bg-surface-300;
-  color: $text-light;
-  font-size: $font-size-sm;
-  font-weight: $font-weight-medium;
-  @include flex-center;
-  cursor: pointer;
-  @include transition-fast;
-
-  @include hover {
-    filter: brightness(1.2);
-  }
-}
-
-.content {
-  flex: 1;
-  overflow-y: auto;
-  background-image: radial-gradient(circle, $border-muted 1px, transparent 1px);
-  background-size: 24px 24px;
-}
-
-.loading {
-  @include flex-center;
-  height: 100%;
-  color: $text-muted;
-}
-
-.error {
-  @include flex-column-center;
-  height: 100%;
-  gap: $space-4;
-  padding: $space-6;
-  color: $error-default;
-
-  h2 {
-    font-size: $font-size-xl;
-    font-weight: $font-weight-semibold;
-  }
-
-  pre {
-    font-family: $font-mono;
-    font-size: $font-size-sm;
-    padding: $space-4;
-    background: $bg-surface-200;
-    border-radius: $radius-lg;
-    overflow-x: auto;
-    max-width: 100%;
-  }
+@media (prefers-reduced-motion: reduce) {
+  .rain, .rain::before, .rain::after, .scanline, .status i { animation: none; }
 }
