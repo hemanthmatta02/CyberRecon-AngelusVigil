@@ -4,6 +4,7 @@ import {
   LuActivity, LuChevronLeft, LuChevronRight, LuCircleAlert, LuCpu,
   LuFileText, LuGlobe, LuLayoutDashboard, LuMenu, LuPlay, LuRadar,
   LuSend, LuServer, LuShield, LuSiren, LuTarget, LuBug, LuBellRing,
+  LuCloudRain, LuScanLine,
 } from 'react-icons/lu'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { ROUTES } from '@/config'
@@ -39,12 +40,24 @@ export function Shell(): React.ReactElement {
   const { sidebarOpen, sidebarCollapsed, toggleSidebar, toggleSidebarCollapsed } = useUIStore()
   return (
     <div className={styles.shell}>
+      <div className={styles.ambient} aria-hidden="true">
+        <div className={styles.rain} />
+        <div className={styles.scanline} />
+      </div>
       <aside className={`${styles.sidebar} ${sidebarOpen ? styles.open : ''} ${sidebarCollapsed ? styles.collapsed : ''}`}>
         <div className={styles.sidebarHeader}>
-          <span className={styles.logo}>{sidebarCollapsed ? 'CS' : 'CyberSentinel'}</span>
+          <div className={styles.brand}>
+            <span className={styles.brandMark}><LuShield /></span>
+            <span className={styles.logo}>{sidebarCollapsed ? 'CS' : 'CyberSentinel'}</span>
+          </div>
           <button type="button" className={styles.collapseBtn} onClick={toggleSidebarCollapsed} aria-label="Toggle sidebar">
             {sidebarCollapsed ? <LuChevronRight /> : <LuChevronLeft />}
           </button>
+        </div>
+        <div className={styles.environmentBadge}>
+          <LuCloudRain />
+          <span>SECURITY OPERATIONS</span>
+          <i aria-hidden="true" />
         </div>
         <nav className={styles.nav}>
           {NAV_ITEMS.map((item) => (
@@ -56,7 +69,19 @@ export function Shell(): React.ReactElement {
       </aside>
       {sidebarOpen && <button type="button" className={styles.overlay} onClick={toggleSidebar} aria-label="Close sidebar" />}
       <div className={`${styles.main} ${sidebarCollapsed ? styles.collapsed : ''}`}>
-        <header className={styles.header}><div className={styles.headerLeft}><button type="button" className={styles.menuBtn} onClick={toggleSidebar} aria-label="Toggle menu"><LuMenu /></button><h1 className={styles.pageTitle}>{getPageTitle(location.pathname)}</h1></div></header>
+        <header className={styles.header}>
+          <div className={styles.headerLeft}>
+            <button type="button" className={styles.menuBtn} onClick={toggleSidebar} aria-label="Toggle menu"><LuMenu /></button>
+            <div className={styles.titleBlock}>
+              <span className={styles.systemLabel}><LuScanLine /> CYBERSENTINEL // SECURE CONSOLE</span>
+              <h1 className={styles.pageTitle}>{getPageTitle(location.pathname)}</h1>
+            </div>
+          </div>
+          <div className={styles.headerRight}>
+            <div className={styles.status}><i aria-hidden="true" /><span>SYSTEM ONLINE</span></div>
+            <div className={styles.avatar}>A</div>
+          </div>
+        </header>
         <main className={styles.content}><ErrorBoundary FallbackComponent={ShellErrorFallback}><Suspense fallback={<ShellLoading />}><Outlet /></Suspense></ErrorBoundary></main>
       </div>
     </div>
