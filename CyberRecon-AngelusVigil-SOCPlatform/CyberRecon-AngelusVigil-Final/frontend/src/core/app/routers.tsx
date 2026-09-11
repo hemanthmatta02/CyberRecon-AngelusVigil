@@ -28,6 +28,7 @@ const routes: RouteObject[] = [
       { path: ROUTES.RECON, lazy: () => import('@/pages/recon') },
       { path: ROUTES.VULNERABILITIES, lazy: () => import('@/pages/vulnerabilities') },
       { path: ROUTES.ALERTS, lazy: () => import('@/pages/alerts') },
+      { path: ROUTES.AI, lazy: () => import('@/pages/ai-copilot') },
     ] }],
   },
   { path: '*', element: <Navigate to={ROUTES.DASHBOARD} replace /> },
