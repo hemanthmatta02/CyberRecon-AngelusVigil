@@ -117,10 +117,14 @@ export function Component(): React.ReactElement {
       setMode('signin')
       setPassword('')
       setConfirmPassword('')
-      setVerificationEmail(email.trim().toLowerCase())
-      setNotice(data.status === 'pending'
-        ? 'Account created. Check your email to verify the account; an administrator must approve it before you can sign in.'
-        : 'Account created. Check your email to verify the account before signing in.')
+      setVerificationEmail(data.verification_required === false ? '' : email.trim().toLowerCase())
+      setNotice(data.verification_required === false
+        ? data.status === 'pending'
+          ? 'Account created. An administrator must approve your account before you can sign in.'
+          : 'Account created. You can sign in now.'
+        : data.status === 'pending'
+          ? 'Account created. Check your email to verify the account; an administrator must approve it before you can sign in.'
+          : 'Account created. Check your email to verify the account before signing in.')
     } catch (e: any) {
       setError(e?.response?.data?.detail || e?.message || 'Request failed. Please try again.')
     } finally {
