@@ -68,10 +68,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     async with engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.create_all)
-        # Compatibility upgrade for databases created by the original schema.
+        # Compatibility upgrades for databases created by earlier releases.
         if settings.database_url.startswith("postgresql"):
             await conn.execute(text("ALTER TABLE IF EXISTS threat_events ALTER COLUMN severity TYPE VARCHAR(10)"))
             await conn.execute(text("ALTER TABLE IF EXISTS incidents ALTER COLUMN severity TYPE VARCHAR(10)"))
+            await conn.execute(text("ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS email VARCHAR(255)"))
+            await conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users (email) WHERE email IS NOT NULL AND email <> ''"))
+            await conn.execute(text("ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT TRUE"))
 
     logger.info("Database tables verified")
 
@@ -204,7 +207,7 @@ def create_app() -> FastAPI:
 
     @app.middleware("http")
     async def enforce_api_auth(request, call_next):
-        public_paths = {"/health", "/ready", "/auth/login", "/auth/register", "/auth/forgot-password", "/docs", "/openapi.json", "/redoc"}
+        public_paths = {"/health", "/ready", "/auth/login", "/auth/register", "/auth/forgot-password", "/auth/verify-email", "/auth/resend-verification", "/docs", "/openapi.json", "/redoc"}
         if (
             request.method != "OPTIONS"
             and settings.env.lower() == "production"
