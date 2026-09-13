@@ -27,6 +27,7 @@ export function Component(): React.ReactElement {
   const navigate = useNavigate()
   const token = readStored<string | null>('cybersentinel_token', null)
   const inviteToken = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('invite') ?? '' : ''
+  const verifyToken = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('verify') ?? '' : ''
   const [mode, setMode] = useState<AuthMode>(inviteToken ? 'register' : 'signin')
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
@@ -38,6 +39,7 @@ export function Component(): React.ReactElement {
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   const [messageTone, setMessageTone] = useState<MessageTone>('notice')
+  const [verificationEmail, setVerificationEmail] = useState('')
 
   useEffect(() => {
     if (!inviteToken) return
@@ -48,6 +50,18 @@ export function Component(): React.ReactElement {
     }).catch(() => setInviteStatus('invalid'))
   }, [inviteToken])
 
+
+  useEffect(() => {
+    if (!verifyToken) return
+    setMode('signin')
+    setNotice('Verifying your email…')
+    void apiClient.get('/auth/verify-email?token=' + encodeURIComponent(verifyToken)).then(({ data }) => {
+      setNotice(data.message || 'Email verified. You can sign in now.')
+    }).catch((e: any) => {
+      setError(e?.response?.data?.detail || 'This verification link is invalid or expired.')
+    })
+  }, [verifyToken])
+
   if (token) return <Navigate to="/" replace />
 
   function switchMode(nextMode: AuthMode): void {
@@ -55,6 +69,7 @@ export function Component(): React.ReactElement {
     setMessage('')
     setPassword('')
     setConfirmPassword('')
+    setVerificationEmail('')
   }
 
   function setNotice(value: string): void {
@@ -102,9 +117,10 @@ export function Component(): React.ReactElement {
       setMode('signin')
       setPassword('')
       setConfirmPassword('')
+      setVerificationEmail(email.trim().toLowerCase())
       setNotice(data.status === 'pending'
-        ? 'Account created. An administrator must approve your account before you can sign in.'
-        : 'Invitation accepted. Your account is ready — sign in to continue.')
+        ? 'Account created. Check your email to verify the account; an administrator must approve it before you can sign in.'
+        : 'Account created. Check your email to verify the account before signing in.')
     } catch (e: any) {
       setError(e?.response?.data?.detail || e?.message || 'Request failed. Please try again.')
     } finally {
@@ -112,7 +128,22 @@ export function Component(): React.ReactElement {
     }
   }
 
-  const validEmail = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email.trim())
+
+  async function resendVerification(): Promise<void> {
+    if (!verificationEmail) return
+    setBusy(true)
+    setMessage('')
+    try {
+      const { data } = await apiClient.post('/auth/resend-verification', { email: verificationEmail })
+      setNotice(data.message || 'A new verification email has been sent.')
+    } catch (e: any) {
+      setError(e?.response?.data?.detail || e?.message || 'Could not resend the verification email.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
   const valid = mode === 'signin'
     ? username.trim().length >= 3 && password.length >= 6
     : username.trim().length >= 3 && validEmail && (fullName.trim().length === 0 || fullName.trim().length >= 2) && password.length >= 8 && password === confirmPassword && inviteStatus !== 'invalid'
@@ -167,6 +198,7 @@ export function Component(): React.ReactElement {
           )}
 
           {message && <div className={messageTone === 'error' ? s.error : s.notice} role={messageTone === 'error' ? 'alert' : 'status'}>{message}</div>}
+          {verificationEmail && messageTone === 'notice' && <button className={s.resendButton} type="button" onClick={() => void resendVerification()} disabled={busy}>Resend verification email</button>}
 
           <button className={s.primaryButton} type="submit" disabled={busy || !valid || (inviteToken !== '' && inviteStatus === 'checking')}>
             {busy ? 'Please wait…' : mode === 'signin' ? 'Sign In' : inviteToken ? 'Accept Invitation' : 'Create Account'}
