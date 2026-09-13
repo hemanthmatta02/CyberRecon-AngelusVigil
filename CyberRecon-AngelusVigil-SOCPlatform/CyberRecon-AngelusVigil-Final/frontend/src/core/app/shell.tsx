@@ -4,7 +4,7 @@ import {
   LuActivity, LuChevronLeft, LuChevronRight, LuCircleAlert, LuCpu,
   LuFileText, LuGlobe, LuLayoutDashboard, LuMenu, LuPlay, LuRadar,
   LuSend, LuServer, LuShield, LuSiren, LuTarget, LuBug, LuBellRing,
-  LuCloudRain, LuScanLine, LuSparkles,
+  LuCloudRain, LuScanLine, LuSparkles, LuKeyRound,
 } from 'react-icons/lu'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { ROUTES } from '@/config'
@@ -28,6 +28,7 @@ const NAV_ITEMS = [
   { path: ROUTES.RECON, label: 'CyberRecon', icon: LuRadar },
   { path: ROUTES.VULNERABILITIES, label: 'Vulnerability Assessment', icon: LuBug },
   { path: ROUTES.ALERTS, label: 'Alert Management', icon: LuBellRing },
+  { path: ROUTES.TEAM, label: 'Team Admin', icon: LuKeyRound },
 ]
 
 function ShellErrorFallback({ error }: { error: unknown }): React.ReactElement {
