@@ -59,8 +59,12 @@ services:
       MODEL_DIR: /app/data/models
       SKIP_AUTO_TRAIN: ${SKIP_AUTO_TRAIN:-true}
       SIM_TARGET_URL: ${SIM_TARGET_URL:-http://devlog-nginx}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.6-luna}
+      OLLAMA_ENABLED: ${OLLAMA_ENABLED:-false}
+      OLLAMA_BASE_URL: ${OLLAMA_DOCKER_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:7b}
+      OLLAMA_TIMEOUT_SECONDS: ${OLLAMA_TIMEOUT_SECONDS:-45}
+      OLLAMA_MAX_INPUT_BYTES: ${OLLAMA_MAX_INPUT_BYTES:-120000}
+      OLLAMA_MAX_OUTPUT_TOKENS: ${OLLAMA_MAX_OUTPUT_TOKENS:-1500}
       MANUAL_ALLOWED_HOSTS: ${MANUAL_ALLOWED_HOSTS:-devlog-nginx,vigil-devlog-nginx,localhost,127.0.0.1}
     ports:
     - ${BACKEND_HOST_PORT:-36969}:8000
