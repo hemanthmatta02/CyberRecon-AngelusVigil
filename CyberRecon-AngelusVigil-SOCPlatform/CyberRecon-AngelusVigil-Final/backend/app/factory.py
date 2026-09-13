@@ -209,6 +209,7 @@ def create_app() -> FastAPI:
             request.method != "OPTIONS"
             and settings.env.lower() == "production"
             and request.url.path not in public_paths
+            and not request.url.path.startswith("/auth/invites/")
             and not request.url.path.startswith("/static/")
         ):
             from app.api.auth import current_user_from_request
