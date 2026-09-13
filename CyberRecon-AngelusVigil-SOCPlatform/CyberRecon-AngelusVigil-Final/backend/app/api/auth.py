@@ -268,7 +268,7 @@ async def login(payload: LoginRequest, session: AsyncSession = Depends(get_sessi
 
 
 @router.post("/register", status_code=201)
-async def register(payload: RegistrationRequest, session: AsyncSession = Depends(get_session)) -> dict[str, str]:
+async def register(payload: RegistrationRequest, session: AsyncSession = Depends(get_session)) -> dict[str, object]:
     invite: TeamInvite | None = None
     if not settings.allow_public_registration and not payload.invite_token:
         raise HTTPException(status_code=403, detail="Public registration is disabled; use an admin invitation")
