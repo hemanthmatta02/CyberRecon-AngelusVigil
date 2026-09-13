@@ -49,6 +49,12 @@ services:
       NGINX_LOG_PATH: /var/log/nginx/access.log
       GEOIP_DB_PATH: /usr/share/GeoIP/GeoLite2-City.mmdb
       MODEL_DIR: /app/data/models
+      OLLAMA_ENABLED: ${OLLAMA_ENABLED:-false}
+      OLLAMA_BASE_URL: ${OLLAMA_DOCKER_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:7b}
+      OLLAMA_TIMEOUT_SECONDS: ${OLLAMA_TIMEOUT_SECONDS:-45}
+      OLLAMA_MAX_INPUT_BYTES: ${OLLAMA_MAX_INPUT_BYTES:-120000}
+      OLLAMA_MAX_OUTPUT_TOKENS: ${OLLAMA_MAX_OUTPUT_TOKENS:-1500}
       SKIP_AUTO_TRAIN: ${SKIP_AUTO_TRAIN:-true}
     ports:
       - "${BACKEND_HOST_PORT:-36969}:8000"
