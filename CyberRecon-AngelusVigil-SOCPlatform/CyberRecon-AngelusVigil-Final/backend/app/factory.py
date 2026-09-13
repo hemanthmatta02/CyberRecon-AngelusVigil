@@ -38,6 +38,7 @@ from app.models import incident as _incident_reg  # noqa: F401
 from app.models import simulation_run as _simulation_run_reg  # noqa: F401
 from app.models import threat_event as _threat_event_reg  # noqa: F401
 from app.models import user as _user_reg  # noqa: F401
+from app.models import team_access as _team_access_reg  # noqa: F401
 from app.models import vulnerability as _vulnerability_reg  # noqa: F401
 from app.models import alert_record as _alert_record_reg  # noqa: F401
 from app.models import manual_request as _manual_request_reg  # noqa: F401
