@@ -6,7 +6,10 @@ import hashlib
 import hmac
 import json
 import os
+import secrets
 import time
+import uuid
+from datetime import datetime, timedelta, timezone
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -16,6 +19,7 @@ from sqlmodel import select
 
 from app.api.deps import get_session
 from app.config import settings
+from app.models.team_access import TeamInvite, UserApproval
 from app.models.user import User
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
@@ -45,6 +49,7 @@ class RegistrationRequest(BaseModel):
     password: str = Field(min_length=8, max_length=128)
     display_name: str = Field(min_length=2, max_length=120)
     role: Literal["analyst", "viewer"] = "viewer"
+    invite_token: str | None = Field(default=None, min_length=16, max_length=256)
 
 
 class ForgotPasswordRequest(BaseModel):
@@ -53,6 +58,12 @@ class ForgotPasswordRequest(BaseModel):
 
 class TeamCreate(RegistrationRequest):
     role: Literal["admin", "analyst", "viewer"] = "viewer"
+
+
+class InviteCreate(BaseModel):
+    display_name: str = Field(min_length=2, max_length=120)
+    role: Literal["analyst", "viewer"] = "viewer"
+    expires_in_days: int = Field(default=7, ge=1, le=30)
 
 
 def _hash_password(password: str, salt: bytes | None = None) -> str:
@@ -103,6 +114,35 @@ def current_user_from_request(request: Request) -> dict[str, object]:
     raise HTTPException(status_code=401, detail="Authentication required")
 
 
+def _require_admin(request: Request) -> dict[str, object]:
+    actor = current_user_from_request(request)
+    if actor.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin role required")
+    return actor
+
+
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _hash_invite_token(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def _user_payload(user: User, approval_status: str | None = None) -> dict[str, object]:
+    if approval_status is None:
+        approval_status = "approved" if user.active else "inactive"
+    return {
+        "id": str(user.id),
+        "username": user.username,
+        "display_name": user.display_name,
+        "role": user.role,
+        "active": user.active,
+        "approval_status": approval_status,
+        "permissions": user.permissions,
+    }
+
+
 async def seed_users(session: AsyncSession) -> None:
     existing = (await session.execute(select(User).limit(1))).scalar_one_or_none()
     if existing:
@@ -133,23 +173,57 @@ async def seed_users(session: AsyncSession) -> None:
 async def login(payload: LoginRequest, session: AsyncSession = Depends(get_session)) -> LoginResponse:
     await seed_users(session)
     user = (await session.execute(select(User).where(User.username == payload.username))).scalar_one_or_none()
-    if not user or not user.active or not _check_password(payload.password, user.password_hash):
+    if not user or not _check_password(payload.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid username or password")
+    approval = (await session.execute(select(UserApproval).where(UserApproval.user_id == user.id))).scalar_one_or_none()
+    if approval and approval.status == "pending":
+        raise HTTPException(status_code=403, detail="Account is pending admin approval")
+    if not user.active:
+        raise HTTPException(status_code=403, detail="Account is not active")
     token = _sign({"sub": user.username, "role": user.role, "exp": int(time.time()) + 8 * 3600})
     return LoginResponse(token=token, username=user.username, display_name=user.display_name, role=user.role, permissions=user.permissions)
 
 
 @router.post("/register", status_code=201)
 async def register(payload: RegistrationRequest, session: AsyncSession = Depends(get_session)) -> dict[str, str]:
-    if not settings.allow_public_registration:
-        raise HTTPException(status_code=403, detail="Public registration is disabled")
+    invite: TeamInvite | None = None
+    if not settings.allow_public_registration and not payload.invite_token:
+        raise HTTPException(status_code=403, detail="Public registration is disabled; use an admin invitation")
     await seed_users(session)
     if (await session.execute(select(User).where(User.username == payload.username))).scalar_one_or_none():
         raise HTTPException(status_code=409, detail="Username already exists")
-    user = User(username=payload.username, password_hash=_hash_password(payload.password), role=payload.role, display_name=payload.display_name, permissions=ROLES[payload.role])
+
+    if payload.invite_token:
+        invite = (await session.execute(select(TeamInvite).where(TeamInvite.token_hash == _hash_invite_token(payload.invite_token)))).scalar_one_or_none()
+        if not invite or invite.used_at is not None or invite.expires_at <= _utc_now():
+            raise HTTPException(status_code=400, detail="Invitation is invalid or expired")
+
+    role = invite.role if invite else payload.role
+    user = User(
+        username=payload.username,
+        password_hash=_hash_password(payload.password),
+        role=role,
+        display_name=payload.display_name.strip(),
+        active=invite is not None,
+        permissions=ROLES[role],
+    )
     session.add(user)
+    if invite:
+        invite.used_at = _utc_now()
+    else:
+        session.add(UserApproval(user_id=user.id, status="pending"))
     await session.commit()
-    return {"status": "created", "username": user.username}
+    if invite:
+        return {"status": "created", "username": user.username, "message": "Invitation accepted. You can sign in now."}
+    return {"status": "pending", "username": user.username, "message": "Registration submitted for admin approval."}
+
+
+@router.get("/invites/{token}")
+async def preview_invite(token: str, session: AsyncSession = Depends(get_session)) -> dict[str, object]:
+    invite = (await session.execute(select(TeamInvite).where(TeamInvite.token_hash == _hash_invite_token(token)))).scalar_one_or_none()
+    if not invite or invite.used_at is not None or invite.expires_at <= _utc_now():
+        raise HTTPException(status_code=404, detail="Invitation is invalid or expired")
+    return {"display_name": invite.display_name, "role": invite.role, "expires_at": invite.expires_at}
 
 
 @router.post("/forgot-password")
@@ -172,17 +246,105 @@ async def team(request: Request, session: AsyncSession = Depends(get_session)) -
     current_user_from_request(request)
     await seed_users(session)
     rows = (await session.execute(select(User).order_by(User.username))).scalars().all()
-    return [{"id": str(u.id), "username": u.username, "display_name": u.display_name, "role": u.role, "active": u.active, "permissions": u.permissions} for u in rows]
+    approval_rows = (await session.execute(select(UserApproval))).scalars().all()
+    approval_by_user = {str(item.user_id): item.status for item in approval_rows}
+    return [_user_payload(user, approval_by_user.get(str(user.id))) for user in rows]
+
+
+@router.get("/team/pending")
+async def pending_team_members(request: Request, session: AsyncSession = Depends(get_session)) -> list[dict[str, object]]:
+    _require_admin(request)
+    rows = (await session.execute(
+        select(User, UserApproval)
+        .join(UserApproval, UserApproval.user_id == User.id)
+        .where(UserApproval.status == "pending")
+        .order_by(UserApproval.created_at)
+    )).all()
+    return [_user_payload(user, approval.status) for user, approval in rows]
+
+
+@router.post("/team/{user_id}/approve")
+async def approve_team_member(user_id: str, request: Request, session: AsyncSession = Depends(get_session)) -> dict[str, object]:
+    actor = _require_admin(request)
+    try:
+        parsed_id = uuid.UUID(user_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail="User not found") from exc
+    user = (await session.execute(select(User).where(User.id == parsed_id))).scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    approval = (await session.execute(select(UserApproval).where(UserApproval.user_id == user.id))).scalar_one_or_none()
+    if approval is None:
+        approval = UserApproval(user_id=user.id)
+        session.add(approval)
+    approval.status = "approved"
+    approval.reviewed_by = str(actor.get("sub", "admin"))
+    approval.reviewed_at = _utc_now()
+    user.active = True
+    await session.commit()
+    return _user_payload(user, "approved")
+
+
+@router.post("/team/{user_id}/reject")
+async def reject_team_member(user_id: str, request: Request, session: AsyncSession = Depends(get_session)) -> dict[str, object]:
+    actor = _require_admin(request)
+    try:
+        parsed_id = uuid.UUID(user_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail="User not found") from exc
+    user = (await session.execute(select(User).where(User.id == parsed_id))).scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    approval = (await session.execute(select(UserApproval).where(UserApproval.user_id == user.id))).scalar_one_or_none()
+    if approval is None:
+        approval = UserApproval(user_id=user.id)
+        session.add(approval)
+    approval.status = "rejected"
+    approval.reviewed_by = str(actor.get("sub", "admin"))
+    approval.reviewed_at = _utc_now()
+    user.active = False
+    await session.commit()
+    return _user_payload(user, "rejected")
+
+
+@router.get("/team/invites")
+async def list_team_invites(request: Request, session: AsyncSession = Depends(get_session)) -> list[dict[str, object]]:
+    _require_admin(request)
+    now = _utc_now()
+    rows = (await session.execute(
+        select(TeamInvite)
+        .where(TeamInvite.used_at.is_(None), TeamInvite.expires_at > now)
+        .order_by(TeamInvite.created_at.desc())
+    )).scalars().all()
+    return [
+        {"id": str(invite.id), "display_name": invite.display_name, "role": invite.role, "created_by": invite.created_by, "expires_at": invite.expires_at}
+        for invite in rows
+    ]
+
+
+@router.post("/team/invites", status_code=201)
+async def create_team_invite(payload: InviteCreate, request: Request, session: AsyncSession = Depends(get_session)) -> dict[str, object]:
+    actor = _require_admin(request)
+    raw_token = secrets.token_urlsafe(32)
+    expires_at = _utc_now() + timedelta(days=payload.expires_in_days)
+    invite = TeamInvite(
+        token_hash=_hash_invite_token(raw_token),
+        display_name=payload.display_name.strip(),
+        role=payload.role,
+        created_by=str(actor.get("sub", "admin")),
+        expires_at=expires_at,
+    )
+    session.add(invite)
+    await session.commit()
+    return {"token": raw_token, "display_name": invite.display_name, "role": invite.role, "expires_at": invite.expires_at}
 
 
 @router.post("/team", status_code=201)
 async def create_team_member(payload: TeamCreate, request: Request, session: AsyncSession = Depends(get_session)) -> dict[str, object]:
-    actor = current_user_from_request(request)
-    if actor.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin role required")
+    _require_admin(request)
     if (await session.execute(select(User).where(User.username == payload.username))).scalar_one_or_none():
         raise HTTPException(status_code=409, detail="Username already exists")
     user = User(username=payload.username, password_hash=_hash_password(payload.password), role=payload.role, display_name=payload.display_name, permissions=ROLES[payload.role])
     session.add(user)
     await session.commit(); await session.refresh(user)
-    return {"id": str(user.id), "username": user.username, "display_name": user.display_name, "role": user.role, "active": user.active, "permissions": user.permissions}
+    return _user_payload(user, "approved")
