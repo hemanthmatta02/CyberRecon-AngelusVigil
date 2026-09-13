@@ -12,10 +12,12 @@
 // ===================
 
 import axios, { type AxiosError, type AxiosInstance } from 'axios'
+import { readStored, removeStored } from '../persistence'
 import { transformAxiosError } from './errors'
 
 const getBaseURL = (): string => {
-  return import.meta.env.VITE_API_URL ?? '/api'
+  const configured = (import.meta.env.VITE_API_URL ?? '').trim()
+  return configured || '/api'
 }
 
 export const apiClient: AxiosInstance = axios.create({
@@ -25,9 +27,11 @@ export const apiClient: AxiosInstance = axios.create({
 })
 
 apiClient.interceptors.request.use((config) => {
-  const token = typeof window !== "undefined" ? window.sessionStorage.getItem("cybersentinel_token") : null
+  const token = typeof window !== 'undefined'
+    ? readStored<string | null>('cybersentinel_token', null)
+    : null
   if (token) {
-    config.headers.Authorization = "Bearer " + token
+    config.headers.Authorization = 'Bearer ' + token
   }
   return config
 })
@@ -35,6 +39,10 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError): Promise<never> => {
+    if (error.response?.status === 401 && typeof window !== 'undefined') {
+      removeStored('cybersentinel_token')
+      removeStored('cybersentinel_user')
+    }
     return Promise.reject(transformAxiosError(error))
   }
 )
