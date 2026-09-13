@@ -208,6 +208,7 @@ async def register(payload: RegistrationRequest, session: AsyncSession = Depends
         permissions=ROLES[role],
     )
     session.add(user)
+    await session.flush()
     if invite:
         invite.used_at = _utc_now()
     else:
