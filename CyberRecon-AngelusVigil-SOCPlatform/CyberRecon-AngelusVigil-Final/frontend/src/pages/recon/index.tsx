@@ -304,6 +304,16 @@ export function Component(): React.ReactElement {
               ))}
             </div>
           </section>
+
+          <section className={styles.card}>
+            <div className={styles.sectionHeader}>
+              <span>Local AI analysis</span>
+              <button type="button" className={styles.aiButton} onClick={() => navigate(ROUTES.AI)}>
+                <LuBrainCircuit /> Review with Ollama
+              </button>
+            </div>
+            <p className={styles.analysisNote}>This opens the existing AI workspace with this scan attached. Analysis stays backend-mediated and is disabled safely when local Ollama is unavailable.</p>
+          </section>
         </>
       )}
 
