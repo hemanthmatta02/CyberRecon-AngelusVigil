@@ -285,6 +285,7 @@ async def register(payload: RegistrationRequest, session: AsyncSession = Depends
             raise HTTPException(status_code=400, detail="Invitation is invalid or expired")
 
     role = invite.role if invite else payload.role
+    verification_required = settings.email_verification_required
     user = User(
         username=payload.username,
         email=email,
@@ -292,30 +293,31 @@ async def register(payload: RegistrationRequest, session: AsyncSession = Depends
         role=role,
         display_name=(payload.display_name or payload.username).strip(),
         active=invite is not None,
-        email_verified=False,
+        email_verified=not verification_required,
         permissions=ROLES[role],
     )
     session.add(user)
     await session.flush()
-    verification_token = secrets.token_urlsafe(32)
-    session.add(EmailVerification(
-        user_id=user.id,
-        token_hash=_hash_email_verification_token(verification_token),
-        expires_at=_utc_now() + timedelta(minutes=settings.email_verification_expires_minutes),
-    ))
-    try:
-        await _send_verification_email(user, verification_token)
-    except Exception:
-        await session.rollback()
-        raise
+    if verification_required:
+        verification_token = secrets.token_urlsafe(32)
+        session.add(EmailVerification(
+            user_id=user.id,
+            token_hash=_hash_email_verification_token(verification_token),
+            expires_at=_utc_now() + timedelta(minutes=settings.email_verification_expires_minutes),
+        ))
+        try:
+            await _send_verification_email(user, verification_token)
+        except Exception:
+            await session.rollback()
+            raise
     if invite:
         invite.used_at = _utc_now()
     else:
         session.add(UserApproval(user_id=user.id, status="pending"))
     await session.commit()
     if invite:
-        return {"status": "created", "username": user.username, "verification_required": True, "message": "Check your email to verify the account before signing in."}
-    return {"status": "pending", "username": user.username, "verification_required": True, "message": "Check your email to verify the account. Admin approval is still required before sign-in."}
+        return {"status": "created", "username": user.username, "verification_required": verification_required, "message": "Check your email to verify the account before signing in." if verification_required else "Invitation accepted. You can sign in now."}
+    return {"status": "pending", "username": user.username, "verification_required": verification_required, "message": "Check your email to verify the account. Admin approval is still required before sign-in." if verification_required else "Account created. An administrator must approve your account before you can sign in."}
 
 
 @router.get("/verify-email")
@@ -337,6 +339,8 @@ async def verify_email(token: str, session: AsyncSession = Depends(get_session))
 @router.post("/resend-verification")
 async def resend_verification(payload: EmailRequest, session: AsyncSession = Depends(get_session)) -> dict[str, str]:
     email = _normalise_email(payload.email)
+    if not settings.email_verification_required:
+        return {"status": "disabled", "message": "Email verification is currently disabled."}
     user = (await session.execute(select(User).where(User.email == email))).scalar_one_or_none()
     generic = {"status": "accepted", "message": "If that account needs verification, a new email has been sent."}
     if not user or user.email_verified:
