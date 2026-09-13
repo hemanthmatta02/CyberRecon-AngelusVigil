@@ -74,6 +74,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             await conn.execute(text("ALTER TABLE IF EXISTS incidents ALTER COLUMN severity TYPE VARCHAR(10)"))
             await conn.execute(text("ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS email VARCHAR(255)"))
             await conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users (email) WHERE email IS NOT NULL AND email <> ''"))
+            await conn.execute(text("ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT TRUE"))
 
     logger.info("Database tables verified")
 
