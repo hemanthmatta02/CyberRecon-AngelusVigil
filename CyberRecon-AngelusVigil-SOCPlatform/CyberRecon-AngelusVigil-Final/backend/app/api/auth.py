@@ -6,6 +6,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import secrets
 import time
 import uuid
@@ -46,6 +47,7 @@ class LoginResponse(BaseModel):
 
 class RegistrationRequest(BaseModel):
     username: str = Field(min_length=3, max_length=80)
+    email: str = Field(min_length=5, max_length=255)
     password: str = Field(min_length=8, max_length=128)
     display_name: str = Field(min_length=2, max_length=120)
     role: Literal["analyst", "viewer"] = "viewer"
@@ -56,7 +58,11 @@ class ForgotPasswordRequest(BaseModel):
     username: str = Field(min_length=3, max_length=80)
 
 
-class TeamCreate(RegistrationRequest):
+class TeamCreate(BaseModel):
+    username: str = Field(min_length=3, max_length=80)
+    password: str = Field(min_length=8, max_length=128)
+    display_name: str = Field(min_length=2, max_length=120)
+    email: str | None = Field(default=None, max_length=255)
     role: Literal["admin", "analyst", "viewer"] = "viewer"
 
 
@@ -129,12 +135,24 @@ def _hash_invite_token(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
+def _normalise_email(value: str | None, required: bool = True) -> str | None:
+    cleaned = (value or "").strip().lower()
+    if not cleaned:
+        if required:
+            raise HTTPException(status_code=422, detail="Email is required")
+        return None
+    if not re.fullmatch(r"[^@\\s]+@[^@\\s]+\\.[^@\\s]+", cleaned):
+        raise HTTPException(status_code=422, detail="Enter a valid email address")
+    return cleaned
+
+
 def _user_payload(user: User, approval_status: str | None = None) -> dict[str, object]:
     if approval_status is None:
         approval_status = "approved" if user.active else "inactive"
     return {
         "id": str(user.id),
         "username": user.username,
+        "email": user.email,
         "display_name": user.display_name,
         "role": user.role,
         "active": user.active,
@@ -190,8 +208,11 @@ async def register(payload: RegistrationRequest, session: AsyncSession = Depends
     if not settings.allow_public_registration and not payload.invite_token:
         raise HTTPException(status_code=403, detail="Public registration is disabled; use an admin invitation")
     await seed_users(session)
+    email = _normalise_email(payload.email)
     if (await session.execute(select(User).where(User.username == payload.username))).scalar_one_or_none():
         raise HTTPException(status_code=409, detail="Username already exists")
+    if (await session.execute(select(User).where(User.email == email))).scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="Email already exists")
 
     if payload.invite_token:
         invite = (await session.execute(select(TeamInvite).where(TeamInvite.token_hash == _hash_invite_token(payload.invite_token)))).scalar_one_or_none()
@@ -201,6 +222,7 @@ async def register(payload: RegistrationRequest, session: AsyncSession = Depends
     role = invite.role if invite else payload.role
     user = User(
         username=payload.username,
+        email=email,
         password_hash=_hash_password(payload.password),
         role=role,
         display_name=payload.display_name.strip(),
@@ -343,9 +365,12 @@ async def create_team_invite(payload: InviteCreate, request: Request, session: A
 @router.post("/team", status_code=201)
 async def create_team_member(payload: TeamCreate, request: Request, session: AsyncSession = Depends(get_session)) -> dict[str, object]:
     _require_admin(request)
+    email = _normalise_email(payload.email, required=False)
     if (await session.execute(select(User).where(User.username == payload.username))).scalar_one_or_none():
         raise HTTPException(status_code=409, detail="Username already exists")
-    user = User(username=payload.username, password_hash=_hash_password(payload.password), role=payload.role, display_name=payload.display_name, permissions=ROLES[payload.role])
+    if email and (await session.execute(select(User).where(User.email == email))).scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="Email already exists")
+    user = User(username=payload.username, email=email, password_hash=_hash_password(payload.password), role=payload.role, display_name=payload.display_name, permissions=ROLES[payload.role])
     session.add(user)
     await session.commit(); await session.refresh(user)
     return _user_payload(user, "approved")
