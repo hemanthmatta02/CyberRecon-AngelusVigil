@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import logging
 import hmac
 import json
 import os
@@ -10,8 +11,12 @@ import re
 import secrets
 import time
 import uuid
+from html import escape
+from urllib.parse import quote
 from datetime import datetime, timedelta, timezone
 from typing import Literal
+
+import httpx
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -20,10 +25,11 @@ from sqlmodel import select
 
 from app.api.deps import get_session
 from app.config import settings
-from app.models.team_access import TeamInvite, UserApproval
+from app.models.team_access import EmailVerification, TeamInvite, UserApproval
 from app.models.user import User
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
+logger = logging.getLogger(__name__)
 SECRET = settings.auth_secret or "cybersentinel-local-demo-secret-change-me"
 ROLES = {
     "admin": ["read", "scan", "manage_alerts", "manage_incidents", "manage_team", "reports"],
@@ -56,6 +62,10 @@ class RegistrationRequest(BaseModel):
 
 class ForgotPasswordRequest(BaseModel):
     username: str = Field(min_length=3, max_length=80)
+
+
+class EmailRequest(BaseModel):
+    email: str = Field(min_length=5, max_length=255)
 
 
 class TeamCreate(BaseModel):
@@ -135,13 +145,65 @@ def _hash_invite_token(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
+def _hash_email_verification_token(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def _verification_url(token: str) -> str:
+    base = settings.frontend_url.rstrip("/")
+    return f"{base}/auth?verify={quote(token, safe='')}"
+
+
+def _verification_html(user: User, url: str) -> str:
+    display_name = escape(user.display_name or user.username)
+    safe_url = escape(url, quote=True)
+    return f"""
+    <div style="background:#1b1b1b;color:#f4f4f5;font-family:Arial,sans-serif;padding:32px">
+      <div style="max-width:560px;margin:0 auto;background:#101010;border:1px solid #383838;border-radius:14px;padding:32px">
+        <h1 style="color:#3f8cff;margin:0 0 18px">CyberSentinel</h1>
+        <p>Hello {display_name},</p>
+        <p>Verify your email address to finish creating your SOC Operator account.</p>
+        <p><a href="{safe_url}" style="display:inline-block;background:#2f5795;color:#fff;text-decoration:none;padding:13px 20px;border-radius:7px">Verify email address</a></p>
+        <p style="color:#9b9ba3;font-size:13px">This link expires in {settings.email_verification_expires_minutes} minutes. If you did not create this account, you can ignore this email.</p>
+      </div>
+    </div>
+    """
+
+
+async def _send_verification_email(user: User, token: str) -> None:
+    if not settings.resend_api_key or not settings.email_from:
+        raise HTTPException(status_code=503, detail="Email verification is not configured")
+    url = _verification_url(token)
+    payload = {
+        "from": settings.email_from,
+        "to": [user.email],
+        "subject": "Verify your CyberSentinel email",
+        "html": _verification_html(user, url),
+        "text": f"Verify your CyberSentinel email: {url}",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            response = await client.post(
+                "https://api.resend.com/emails",
+                headers={"Authorization": f"Bearer {settings.resend_api_key}"},
+                json=payload,
+            )
+            response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(status_code=502, detail="Verification email provider rejected the request") from exc
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=502, detail="Verification email provider is unavailable") from exc
+
+
+
+
 def _normalise_email(value: str | None, required: bool = True) -> str | None:
     cleaned = (value or "").strip().lower()
     if not cleaned:
         if required:
             raise HTTPException(status_code=422, detail="Email is required")
         return None
-    if not re.fullmatch(r"[^@\\s]+@[^@\\s]+\\.[^@\\s]+", cleaned):
+    if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", cleaned):
         raise HTTPException(status_code=422, detail="Enter a valid email address")
     return cleaned
 
@@ -153,6 +215,7 @@ def _user_payload(user: User, approval_status: str | None = None) -> dict[str, o
         "id": str(user.id),
         "username": user.username,
         "email": user.email,
+        "email_verified": user.email_verified,
         "display_name": user.display_name,
         "role": user.role,
         "active": user.active,
@@ -194,6 +257,8 @@ async def login(payload: LoginRequest, session: AsyncSession = Depends(get_sessi
     if not user or not _check_password(payload.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid username or password")
     approval = (await session.execute(select(UserApproval).where(UserApproval.user_id == user.id))).scalar_one_or_none()
+    if not user.email_verified:
+        raise HTTPException(status_code=403, detail="Please verify your email address before signing in")
     if approval and approval.status == "pending":
         raise HTTPException(status_code=403, detail="Account is pending admin approval")
     if not user.active:
@@ -227,18 +292,67 @@ async def register(payload: RegistrationRequest, session: AsyncSession = Depends
         role=role,
         display_name=(payload.display_name or payload.username).strip(),
         active=invite is not None,
+        email_verified=False,
         permissions=ROLES[role],
     )
     session.add(user)
     await session.flush()
+    verification_token = secrets.token_urlsafe(32)
+    session.add(EmailVerification(
+        user_id=user.id,
+        token_hash=_hash_email_verification_token(verification_token),
+        expires_at=_utc_now() + timedelta(minutes=settings.email_verification_expires_minutes),
+    ))
+    try:
+        await _send_verification_email(user, verification_token)
+    except Exception:
+        await session.rollback()
+        raise
     if invite:
         invite.used_at = _utc_now()
     else:
         session.add(UserApproval(user_id=user.id, status="pending"))
     await session.commit()
     if invite:
-        return {"status": "created", "username": user.username, "message": "Invitation accepted. You can sign in now."}
-    return {"status": "pending", "username": user.username, "message": "Registration submitted for admin approval."}
+        return {"status": "created", "username": user.username, "verification_required": True, "message": "Check your email to verify the account before signing in."}
+    return {"status": "pending", "username": user.username, "verification_required": True, "message": "Check your email to verify the account. Admin approval is still required before sign-in."}
+
+
+@router.get("/verify-email")
+async def verify_email(token: str, session: AsyncSession = Depends(get_session)) -> dict[str, str]:
+    verification = (await session.execute(
+        select(EmailVerification).where(EmailVerification.token_hash == _hash_email_verification_token(token))
+    )).scalar_one_or_none()
+    if not verification or verification.used_at is not None or verification.expires_at <= _utc_now():
+        raise HTTPException(status_code=400, detail="Verification link is invalid or expired")
+    user = (await session.execute(select(User).where(User.id == verification.user_id))).scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="Account not found")
+    user.email_verified = True
+    verification.used_at = _utc_now()
+    await session.commit()
+    return {"status": "verified", "message": "Email verified. You can sign in now."}
+
+
+@router.post("/resend-verification")
+async def resend_verification(payload: EmailRequest, session: AsyncSession = Depends(get_session)) -> dict[str, str]:
+    email = _normalise_email(payload.email)
+    user = (await session.execute(select(User).where(User.email == email))).scalar_one_or_none()
+    generic = {"status": "accepted", "message": "If that account needs verification, a new email has been sent."}
+    if not user or user.email_verified:
+        return generic
+    verification_token = secrets.token_urlsafe(32)
+    session.add(EmailVerification(
+        user_id=user.id,
+        token_hash=_hash_email_verification_token(verification_token),
+        expires_at=_utc_now() + timedelta(minutes=settings.email_verification_expires_minutes),
+    ))
+    await session.commit()
+    try:
+        await _send_verification_email(user, verification_token)
+    except HTTPException:
+        logger.exception("Could not resend verification email")
+    return generic
 
 
 @router.get("/invites/{token}")
