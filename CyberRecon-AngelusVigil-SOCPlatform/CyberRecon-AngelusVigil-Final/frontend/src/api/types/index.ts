@@ -18,3 +18,5 @@ export * from './threats.types'
 export * from './websocket.types'
 
 export * from './recon.types'
+
+export * from './ai.types'
