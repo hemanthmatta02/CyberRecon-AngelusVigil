@@ -7,15 +7,20 @@
 // Creates an axios instance with base URL from VITE_API_URL
 // env var (defaulting to /api), 15-second timeout, and JSON
 // content type. Response interceptor transforms AxiosError
-// into typed ApiError via transformAxiosError for consistent
-// error handling across all API hooks
+// into typed ApiError for consistent error handling across all API hooks.
 // ===================
 
 import axios, { type AxiosError, type AxiosInstance } from 'axios'
+import { readStored, removeStored } from '../persistence'
 import { transformAxiosError } from './errors'
 
 const getBaseURL = (): string => {
-  return import.meta.env.VITE_API_URL ?? '/api'
+  const configured = (import.meta.env.VITE_API_URL ?? '').trim()
+  const host = typeof window !== 'undefined' ? window.location.hostname : ''
+  // Vercel deployments use the same-origin proxy in vercel.json. This keeps
+  // preview deployments working without adding every generated hostname to CORS.
+  if (host.endsWith('.vercel.app')) return '/api'
+  return configured || '/api'
 }
 
 export const apiClient: AxiosInstance = axios.create({
@@ -25,9 +30,11 @@ export const apiClient: AxiosInstance = axios.create({
 })
 
 apiClient.interceptors.request.use((config) => {
-  const token = typeof window !== "undefined" ? window.sessionStorage.getItem("cybersentinel_token") : null
+  const token = typeof window !== 'undefined'
+    ? readStored<string | null>('cybersentinel_token', null)
+    : null
   if (token) {
-    config.headers.Authorization = "Bearer " + token
+    config.headers.Authorization = 'Bearer ' + token
   }
   return config
 })
@@ -35,6 +42,10 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError): Promise<never> => {
+    if (error.response?.status === 401 && typeof window !== 'undefined') {
+      removeStored('cybersentinel_token')
+      removeStored('cybersentinel_user')
+    }
     return Promise.reject(transformAxiosError(error))
   }
 )

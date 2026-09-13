@@ -1,5 +1,9 @@
 {
   "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://cyberrecon-angelusvigil-production.up.railway.app/:path*"
+    },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
