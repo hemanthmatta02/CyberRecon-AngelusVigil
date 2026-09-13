@@ -352,3 +352,5 @@ code {
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+.aiButton{display:inline-flex;align-items:center;gap:$space-2;padding:$space-2 $space-3;background:$accent-muted;color:$text-default;border:1px solid $accent;border-radius:$radius-md;cursor:pointer;font-size:$font-size-xs}.aiButton:hover{background:$accent;color:$white}.analysisNote{margin:0;color:$text-muted;font-size:$font-size-xs;line-height:$line-height-relaxed}
