@@ -43,3 +43,21 @@ class TeamInvite(TimestampedModel, table=True):
         sa_type=DateTime(timezone=True),
         nullable=True,
     )
+
+
+class EmailVerification(TimestampedModel, table=True):
+    """One-time, hashed email-verification tokens."""
+
+    __tablename__ = "email_verifications"
+
+    user_id: uuid.UUID = Field(foreign_key="users.id", index=True)
+    token_hash: str = Field(index=True, unique=True, max_length=64)
+    expires_at: datetime = Field(
+        sa_type=DateTime(timezone=True),
+        nullable=False,
+    )
+    used_at: datetime | None = Field(
+        default=None,
+        sa_type=DateTime(timezone=True),
+        nullable=True,
+    )
