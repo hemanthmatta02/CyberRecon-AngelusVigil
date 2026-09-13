@@ -24,9 +24,13 @@ SAMPLE_SCAN = {
 }
 
 
-def test_analyze_request_requires_real_scan_data() -> None:
+def test_analyze_request_requires_explicit_real_scan_data() -> None:
     with pytest.raises(ValueError):
-        AnalyzeRequest(question="What is risky?", context={})
+        AnalyzeRequest(question="What is risky?", scan_data={})
+    with pytest.raises(ValueError):
+        AnalyzeRequest(question="What is risky?", context=SAMPLE_SCAN)
+    request = AnalyzeRequest(question="What is risky?", scan_data=SAMPLE_SCAN)
+    assert request.scan_data == SAMPLE_SCAN
 
 
 def test_grounded_evidence_accepts_exact_json_pointer_value() -> None:
