@@ -26,6 +26,7 @@ Connects to:
 """
 
 from typing import Self
+from urllib.parse import urlparse
 
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -94,12 +95,46 @@ class Settings(BaseSettings):
     ae_threshold_percentile: float = 99.5
     mlflow_tracking_uri: str = "file:./mlruns"
 
+    # Optional local-only analysis; disabled by default outside local .env files.
+    ollama_enabled: bool = False
+    ollama_base_url: str = ""
+    ollama_model: str = "qwen2.5:7b"
+    ollama_timeout_seconds: float = 45.0
+    ollama_max_input_bytes: int = 120_000
+    ollama_max_output_tokens: int = 1_500
+
     def cors_origin_list(self) -> list[str]:
         """Return configured browser origins as a normalized list."""
         return [origin.strip().rstrip("/") for origin in self.cors_origins.split(",") if origin.strip()]
 
+    def validate_ollama_runtime(self) -> None:
+        """Allow only a local Ollama listener; never a public model endpoint."""
+        if not self.ollama_enabled:
+            return
+        if self.env.lower() == "production":
+            raise ValueError("OLLAMA_ENABLED must be false in production")
+        if not self.ollama_base_url.strip():
+            raise ValueError("OLLAMA_BASE_URL is required when OLLAMA_ENABLED is true")
+        parsed = urlparse(self.ollama_base_url.strip())
+        local_hosts = {"localhost", "127.0.0.1", "::1", "host.docker.internal"}
+        if (parsed.scheme not in {"http", "https"}
+                or parsed.hostname not in local_hosts
+                or parsed.username
+                or parsed.password
+                or parsed.query
+                or parsed.fragment
+                or parsed.path not in {"", "/"}):
+            raise ValueError("OLLAMA_BASE_URL must point to a local Ollama listener")
+        if self.ollama_timeout_seconds <= 0 or self.ollama_timeout_seconds > 300:
+            raise ValueError("OLLAMA_TIMEOUT_SECONDS must be between 0 and 300")
+        if self.ollama_max_input_bytes < 1024 or self.ollama_max_input_bytes > 2_000_000:
+            raise ValueError("OLLAMA_MAX_INPUT_BYTES is outside the safe range")
+        if self.ollama_max_output_tokens < 128 or self.ollama_max_output_tokens > 16_000:
+            raise ValueError("OLLAMA_MAX_OUTPUT_TOKENS is outside the safe range")
+
     def validate_runtime(self) -> None:
         """Reject unsafe production defaults before the app starts."""
+        self.validate_ollama_runtime()
         if self.env.lower() != "production":
             return
         if len(self.auth_secret) < 32:
