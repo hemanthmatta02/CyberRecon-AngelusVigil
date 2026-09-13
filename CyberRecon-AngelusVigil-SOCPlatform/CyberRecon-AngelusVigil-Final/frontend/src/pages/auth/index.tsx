@@ -95,7 +95,7 @@ export function Component(): React.ReactElement {
         username: cleanUsername,
         email: email.trim().toLowerCase(),
         password,
-        display_name: fullName.trim(),
+        display_name: fullName.trim() || cleanUsername,
         role: 'viewer',
         ...(inviteToken ? { invite_token: inviteToken } : {}),
       })
@@ -115,7 +115,7 @@ export function Component(): React.ReactElement {
   const validEmail = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email.trim())
   const valid = mode === 'signin'
     ? username.trim().length >= 3 && password.length >= 6
-    : username.trim().length >= 3 && validEmail && fullName.trim().length >= 2 && password.length >= 8 && password === confirmPassword && inviteStatus !== 'invalid'
+    : username.trim().length >= 3 && validEmail && (fullName.trim().length === 0 || fullName.trim().length >= 2) && password.length >= 8 && password === confirmPassword && inviteStatus !== 'invalid'
 
   return (
     <main className={s.authScreen}>
