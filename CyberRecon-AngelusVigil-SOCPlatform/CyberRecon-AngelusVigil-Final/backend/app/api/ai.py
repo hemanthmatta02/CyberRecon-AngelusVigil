@@ -47,15 +47,10 @@ class SecurityAnalysis(StrictModel):
 
 class AnalyzeRequest(StrictModel):
     question: str = Field(min_length=3, max_length=1200)
-    # scan_data is the new explicit field. context remains accepted for one
-    # release so existing clients can migrate without losing the endpoint.
-    scan_data: dict[str, Any] | None = None
-    context: dict[str, Any] | None = None
+    scan_data: dict[str, Any]
 
     @model_validator(mode="after")
     def require_grounded_scan_data(self) -> Self:
-        if self.scan_data is None:
-            self.scan_data = self.context
         if not self.scan_data:
             raise ValueError("A non-empty scan_data object is required for analysis.")
         encoded = json.dumps(self.scan_data, ensure_ascii=False, default=str)
