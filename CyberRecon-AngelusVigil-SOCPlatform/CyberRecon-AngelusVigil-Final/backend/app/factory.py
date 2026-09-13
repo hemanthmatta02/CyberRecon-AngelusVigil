@@ -207,7 +207,7 @@ def create_app() -> FastAPI:
 
     @app.middleware("http")
     async def enforce_api_auth(request, call_next):
-        public_paths = {"/health", "/ready", "/auth/login", "/auth/register", "/auth/forgot-password", "/docs", "/openapi.json", "/redoc"}
+        public_paths = {"/health", "/ready", "/auth/login", "/auth/register", "/auth/forgot-password", "/auth/verify-email", "/auth/resend-verification", "/docs", "/openapi.json", "/redoc"}
         if (
             request.method != "OPTIONS"
             and settings.env.lower() == "production"
