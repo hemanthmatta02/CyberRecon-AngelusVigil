@@ -7,8 +7,7 @@
 // Creates an axios instance with base URL from VITE_API_URL
 // env var (defaulting to /api), 15-second timeout, and JSON
 // content type. Response interceptor transforms AxiosError
-// into typed ApiError via transformAxiosError for consistent
-// error handling across all API hooks
+// into typed ApiError for consistent error handling across all API hooks.
 // ===================
 
 import axios, { type AxiosError, type AxiosInstance } from 'axios'
@@ -17,6 +16,10 @@ import { transformAxiosError } from './errors'
 
 const getBaseURL = (): string => {
   const configured = (import.meta.env.VITE_API_URL ?? '').trim()
+  const host = typeof window !== 'undefined' ? window.location.hostname : ''
+  // Vercel deployments use the same-origin proxy in vercel.json. This keeps
+  // preview deployments working without adding every generated hostname to CORS.
+  if (host.endsWith('.vercel.app')) return '/api'
   return configured || '/api'
 }
 
