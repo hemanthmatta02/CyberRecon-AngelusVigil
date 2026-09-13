@@ -59,7 +59,7 @@ export function Component(): React.ReactElement {
     setQuestion('')
     setBusy(true)
     try {
-      const response = await apiClient.post<unknown>(API_ENDPOINTS.AI.ANALYZE, { question: prompt, scan_data: scan })
+      const response = await apiClient.post<unknown>(API_ENDPOINTS.AI.ANALYZE, { question: prompt, scan_data: scan }, { timeout: 60_000 })
       const result = AIAnalysisResponseSchema.parse(response.data)
       setMessages((current) => [...current, { id: Date.now() + 1, role: 'assistant', content: result.answer, analysis: result.analysis }])
     } catch (error: any) {
