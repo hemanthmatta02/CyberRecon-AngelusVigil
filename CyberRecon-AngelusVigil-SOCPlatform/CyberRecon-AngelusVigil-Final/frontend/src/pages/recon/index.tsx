@@ -1,6 +1,8 @@
 import { type FormEvent, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   LuActivity,
+  LuBrainCircuit,
   LuCircleAlert,
   LuClock3,
   LuGlobe,
@@ -11,6 +13,7 @@ import {
 } from 'react-icons/lu'
 import { toast } from 'sonner'
 import { usePersistentState } from '@/core/persistence'
+import { ROUTES } from '@/config'
 
 import { useReconHistory, useReconScan } from '@/api/hooks'
 import type { ReconResponse } from '@/api/types'
@@ -39,8 +42,10 @@ function Metric({
 }
 
 export function Component(): React.ReactElement {
+  const navigate = useNavigate()
   const scan = useReconScan()
   const history = useReconHistory()
+  const [, setAIContext] = usePersistentState<{ source: 'CyberRecon'; scan: ReconResponse } | null>('ai-workspace.context', null)
 
   const [domain, setDomain] = usePersistentState('tab-history-recon.domain', '')
   const [subdomains, setSubdomains] = usePersistentState('tab-history-recon.subdomains', true)
@@ -84,6 +89,7 @@ export function Component(): React.ReactElement {
       ports: selectedPorts,
     })
     setResult(response)
+    setAIContext({ source: 'CyberRecon', scan: response })
   }
 
   return (
