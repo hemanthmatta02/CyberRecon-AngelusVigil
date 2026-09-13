@@ -49,7 +49,7 @@ class RegistrationRequest(BaseModel):
     username: str = Field(min_length=3, max_length=80)
     email: str = Field(min_length=5, max_length=255)
     password: str = Field(min_length=8, max_length=128)
-    display_name: str = Field(min_length=2, max_length=120)
+    display_name: str | None = Field(default=None, min_length=2, max_length=120)
     role: Literal["analyst", "viewer"] = "viewer"
     invite_token: str | None = Field(default=None, min_length=16, max_length=256)
 
@@ -225,7 +225,7 @@ async def register(payload: RegistrationRequest, session: AsyncSession = Depends
         email=email,
         password_hash=_hash_password(payload.password),
         role=role,
-        display_name=payload.display_name.strip(),
+        display_name=(payload.display_name or payload.username).strip(),
         active=invite is not None,
         permissions=ROLES[role],
     )
