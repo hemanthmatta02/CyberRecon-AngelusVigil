@@ -28,6 +28,7 @@ const routes: RouteObject[] = [
       { path: ROUTES.RECON, lazy: () => import('@/pages/recon') },
       { path: ROUTES.VULNERABILITIES, lazy: () => import('@/pages/vulnerabilities') },
       { path: ROUTES.ALERTS, lazy: () => import('@/pages/alerts') },
+      { path: ROUTES.TEAM, lazy: () => import('@/pages/team') },
       { path: ROUTES.AI, lazy: () => import('@/pages/ai-copilot') },
     ] }],
   },
