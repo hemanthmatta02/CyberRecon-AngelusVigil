@@ -10,6 +10,7 @@ class User(TimestampedModel, table=True):
 
     username: str = Field(index=True, unique=True, max_length=80)
     email: str | None = Field(default=None, index=True, max_length=255)
+    email_verified: bool = Field(default=True, nullable=False)
     password_hash: str = Field(max_length=255)
     role: str = Field(default="viewer", max_length=20)
     display_name: str = Field(default="Team Member", max_length=120)
