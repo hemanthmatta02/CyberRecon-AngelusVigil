@@ -53,6 +53,7 @@ class Settings(BaseSettings):
     email_from: str = ""
     frontend_url: str = "http://localhost:5173"
     email_verification_expires_minutes: int = 30
+    email_verification_required: bool = False
     allow_demo_auth: bool = False
     allow_public_registration: bool = True
     cors_origins: str = ""
