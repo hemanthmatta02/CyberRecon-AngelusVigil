@@ -114,3 +114,49 @@ The current build is organized into separate operational tabs rather than puttin
 Use `docker compose up -d --build` from the repository root. The compose file now starts the local lab target and nginx proxy on the same Docker network as the backend, so Manual Request and Attack Simulation can exercise the real log-ingestion path without requiring a second compose stack.
 
 The Threat Intelligence page intentionally reports **local observed-telemetry reputation** unless an external feed is configured. It does not pretend that an external commercial feed is present. Likewise, the ML page reports model state and observed scores from the running system rather than inventing accuracy metrics without a labeled evaluation set.
+
+
+## Optional local Ollama security analysis
+
+The existing CyberRecon scan flow remains unchanged. After a completed scan, the result can be handed to the existing Security AI Workspace. The browser sends the request to the CyberSentinel backend; only the backend calls Ollama. The request contains the real scan result, and the backend rejects model output whose evidence does not exactly match a JSON Pointer in that result. HTTP titles, banners, DNS values, URLs and errors are treated as untrusted data, not instructions. There is no OpenAI, Gemini, Claude, cloud fallback or fabricated local fallback.
+
+### Direct local backend
+
+Keep Ollama bound to the local machine and run:
+
+```powershell
+ollama serve
+ollama pull qwen2.5:7b
+Copy-Item .env.example .env
+# Keep OLLAMA_ENABLED=true and OLLAMA_BASE_URL=http://127.0.0.1:11434 in .env
+cd backend
+uv sync --extra dev
+uv run python -m app
+```
+
+Run the frontend in a second terminal:
+
+```powershell
+cd frontend
+npm ci
+$env:VITE_API_TARGET = "http://localhost:8000"
+npm run dev
+```
+
+Open the frontend, run CyberRecon, select **Review with Ollama**, and use one of the grounded analysis actions. If Ollama is stopped, the workspace reports the unavailable state and existing scanning continues to work.
+
+### Docker local backend
+
+Docker Desktop can reach a host-local Ollama listener through `host.docker.internal`; the compose files do not publish an Ollama port. With `.env` copied from `.env.example`, run:
+
+```powershell
+ollama serve
+ollama pull qwen2.5:7b
+docker compose up -d --build
+```
+
+The backend uses `OLLAMA_DOCKER_BASE_URL=http://host.docker.internal:11434` inside the container. Do not replace it with a public URL.
+
+### Hosted deployment boundary
+
+The Vercel frontend and Railway backend cannot reach Ollama running on a developer workstation. Keep `OLLAMA_ENABLED=false` in Railway production variables; the hosted application remains fully usable, but this optional local analysis action is unavailable there. Enabling it in production is rejected at startup, and the configuration accepts only local listener hosts. A hosted Ollama deployment would be a different architecture and is intentionally not included.
