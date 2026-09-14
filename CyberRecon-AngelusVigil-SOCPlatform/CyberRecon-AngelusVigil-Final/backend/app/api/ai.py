@@ -118,7 +118,9 @@ def _ground_analysis(analysis: SecurityAnalysis, scan_data: dict[str, Any]) -> S
                 actual = _resolve_json_pointer(bounded, evidence.path)
             except (KeyError, IndexError, TypeError, ValueError) as exc:
                 raise OllamaInvalidResponse("Analysis referenced a missing evidence path") from exc
-            if _json_scalar(actual).strip() != evidence.value.strip():
+            if isinstance(actual, (dict, list)):
+                raise OllamaInvalidResponse("Analysis evidence must reference a scalar value")
+            if _json_scalar(actual) != evidence.value:
                 raise OllamaInvalidResponse("Analysis evidence did not match the supplied scan")
     return analysis
 
