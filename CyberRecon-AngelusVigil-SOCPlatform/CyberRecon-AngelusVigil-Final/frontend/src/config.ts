@@ -10,7 +10,7 @@ export const API_ENDPOINTS = {
   SECURITY: { ALERTS: '/security/alerts', VULNS: '/security/vulnerabilities', VULN_SCAN: '/security/vulnerability-scan', CLASSIFICATIONS: '/security/threat-classifications' },
   AUTH: { LOGIN: '/auth/login', TEAM: '/auth/team', ME: '/auth/me' },
   MANUAL_REQUEST: '/manual-request',
-  AI: '/ai/analyze',
+  AI: { STATUS: '/ai/status', ANALYZE: '/ai/analyze' },
   PLATFORM: {
     OVERVIEW: '/platform/overview',
     DETECTION: '/platform/detection',
