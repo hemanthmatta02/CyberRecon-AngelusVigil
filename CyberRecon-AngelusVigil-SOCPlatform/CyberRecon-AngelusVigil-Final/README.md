@@ -129,6 +129,12 @@ ollama serve
 ollama pull qwen2.5:7b
 Copy-Item .env.example .env
 # Keep OLLAMA_ENABLED=true and OLLAMA_BASE_URL=http://127.0.0.1:11434 in .env
+# The template uses Docker service names for its dependencies. Start only those services,
+# then point a directly-run backend process at their published localhost ports.
+docker compose up -d postgres redis
+$env:DATABASE_URL = "postgresql+asyncpg://vigil:devpassword@localhost:16969/cybersentinel"
+$env:REDIS_URL = "redis://localhost:26969"
+$env:CORS_ORIGINS = "http://localhost:5173"
 cd backend
 uv sync --extra dev
 uv run python -m app
